@@ -401,10 +401,10 @@ run_live() {
       ;;
     *) pf_fail "GET /auth/login" "status $status; want a redirect" ;;
   esac
-  if tr -d '\r' <"$WORK/login/headers" | grep -i '^set-cookie:[[:space:]]*passflow_txn=' | grep -qi 'httponly'; then
-    pf_pass "GET /auth/login sets an HttpOnly passflow_txn cookie"
+  if tr -d '\r' <"$WORK/login/headers" | grep -iE '^set-cookie:[[:space:]]*(__Host-)?passflow_txn=' | grep -qi 'httponly'; then
+    pf_pass "GET /auth/login sets an HttpOnly transaction cookie (passflow_txn, or __Host-passflow_txn on https)"
   else
-    pf_fail "GET /auth/login" "no HttpOnly passflow_txn cookie"
+    pf_fail "GET /auth/login" "no HttpOnly passflow_txn or __Host-passflow_txn cookie"
   fi
   location=''
   issuer=''

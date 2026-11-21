@@ -61,7 +61,15 @@ Both forms of `withAuth` exist in 0.26.2: the method `usePassflow().withAuth(fet
 
 ## `@passflow/nextjs`
 
-Built, tested in acceptance, not published (0.1.0). Next.js 16 or newer, React 19 or newer, Node.js 22.12 or newer. ESM only, with a `browser` export condition that resolves to a stub. Depends on `@passflow/node` ^0.2.0. Install variable: `PASSFLOW_NEXTJS_VERSION`. Reads `PASSFLOW_ISSUER`, `PASSFLOW_CLIENT_ID`, `PASSFLOW_CLIENT_SECRET`, `PASSFLOW_SECRET` and `APP_BASE_URL` on first use. Redirects are absolute URLs built on `APP_BASE_URL`, because the Next.js proxy refuses a relative `Location`. The assets are byte-identical to the ones the acceptance suite ran, except `app/actions.example.ts` and `lib/call-api.example.ts`, which were type-checked against the built package.
+Built, tested in acceptance, not published (0.1.0). Next.js 16 or newer, React 19 or newer, Node.js 22.12 or newer. ESM only, with a `browser` export condition that resolves to a stub. Depends on `@passflow/node` ^0.2.0. Install variable: `PASSFLOW_NEXTJS_VERSION`. Reads `PASSFLOW_ISSUER`, `PASSFLOW_CLIENT_ID`, `PASSFLOW_CLIENT_SECRET`, `PASSFLOW_SECRET` and `APP_BASE_URL` on first use. Redirects are absolute URLs built on `APP_BASE_URL`, because the Next.js proxy refuses a relative `Location`. `APP_BASE_URL` is an origin only; `npx passflow integrate` refuses a `--base-url` with a path, query or fragment.
+
+Session behaviour, from `@passflow/node/session` and shared with `@passflow/tanstack-react-start`:
+
+- Cookies: `__Host-passflow_session` (chunks `__Host-passflow_session.0`, `.1`, …) and `__Host-passflow_txn` on https; `passflow_session` and `passflow_txn` on http loopback. All use `Path=/`, the transaction cookie included.
+- `GET /auth/logout` does nothing for a prefetch (`Sec-Purpose`, `Purpose` or `Next-Router-Prefetch`) or a request another site started (`Sec-Fetch-Site` other than `same-origin` or `none`).
+- Issuer calls time out after 10 seconds. When the issuer gives no answer (timeout, refused connection, unknown host) or answers with a 5xx, `/auth/login` and `/auth/callback` answer 503 `text/plain` with `Sign-in is unavailable: the Passflow issuer could not be reached. Try again later.`, and nothing retries.
+
+The assets are byte-identical to the ones the acceptance suite ran, except `app/actions.example.ts` and `lib/call-api.example.ts`, which were type-checked against the built package.
 
 | Export | Import path | Signature or shape | Status | Used by |
 |---|---|---|---|---|
@@ -75,7 +83,7 @@ Built, tested in acceptance, not published (0.1.0). Next.js 16 or newer, React 1
 
 ## `@passflow/tanstack-react-start`
 
-Built, tested in acceptance, not published (0.1.0). Peer ranges: `@tanstack/react-start` >=1.169.5 <2 and `@tanstack/react-router` >=1.170.46 <2; tested with Start 1.169.5 and Router 1.170.46. Detection still accepts `>=1.169`, and the skill tells the developer to update an older 1.169 release. ESM only, with a `browser` export condition that resolves to a stub. Depends on `@passflow/node` ^0.2.0. Install variable: `PASSFLOW_TANSTACK_REACT_START_VERSION`. Reads the same five env vars as `@passflow/nextjs`. The assets are byte-identical to the ones the acceptance suite ran, except `src/lib/server-functions.example.ts` and `src/lib/call-api.example.ts`, which were built and type-checked against the built package.
+Built, tested in acceptance, not published (0.1.0). Peer ranges: `@tanstack/react-start` >=1.169.5 <2 and `@tanstack/react-router` >=1.170.46 <2; tested with Start 1.169.5 and Router 1.170.46. Detection asks for the same floors: `@tanstack/react-start` >=1.169.5 and `@tanstack/react-router` >=1.170.46, both listed. ESM only, with a `browser` export condition that resolves to a stub. Depends on `@passflow/node` ^0.2.0. Install variable: `PASSFLOW_TANSTACK_REACT_START_VERSION`. Reads the same five env vars as `@passflow/nextjs`, with the same cookies, sign-out and issuer behaviour (see the session behaviour list above). The middleware's Origin check applies to any request with a `Cookie` header, whatever the cookie's name. The assets are byte-identical to the ones the acceptance suite ran, except `src/lib/server-functions.example.ts` and `src/lib/call-api.example.ts`, which were built and type-checked against the built package.
 
 | Export | Import path | Signature or shape | Status | Used by |
 |---|---|---|---|---|

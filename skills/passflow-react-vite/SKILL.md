@@ -12,18 +12,27 @@ Adds sign-in to a React + Vite single-page app and protects the Node API it call
 
 The API must exist already, on Express, Fastify or Hono. This skill never creates a server and never picks a framework. The only packages it adds are `@passflow/react` and `@passflow/node`. It never adds another dependency, never edits `package.json` scripts and never creates or edits a `.env*` file (`.env.example` included). Whatever else the developer has to do is listed in the last step.
 
+## Where this runs
+
+The skill runs on one of two paths. Where a step differs, it is labelled.
+
+- **On the developer's machine** (`npx passflow integrate`, or an agent the developer runs): you have a shell. You install with the package manager and run `verify.sh` yourself.
+- **In a Passflow GitHub App run**: you have no shell. Your tools are Read, Write, Edit, Glob, Grep and Skill, plus `add_passflow_package({ name })`, `run_build()` and `run_typecheck()`. The last two return an exit code and a short tail of the output. The runner, not you, starts `verify.sh` afterwards.
+
+Every other step uses only reading and writing files, so it is the same on both paths.
+
 ## Preconditions
 
-Check each one before you change a file. If one fails, stop and tell the user why.
+Check each one before you change a file. Read the `package.json` files and look for the files named below with Glob (Grep for a line inside one). If one fails, stop and tell the user why.
 
-1. **Stack.** The root `package.json` lists both `vite` and `react` in `dependencies` or `devDependencies`, and lists neither `next` nor `@tanstack/react-start`. If it lists one of those, use that stack's Passflow skill instead. If that stack's version rule fails (Next.js older than 16, TanStack Start older than 1.169, or a range that cannot be compared), stop: the project is refused, not handled as a React + Vite app.
-2. **A single-page app.** If the root `package.json` lists a framework that renders React on a server (`@react-router/dev`, `@remix-run/dev`, `vike`, `vite-plugin-ssr`, `waku`, `astro`, `rakkasjs`), stop: this skill is for a single-page app only.
+1. **Stack.** The root `package.json` lists both `vite` and `react` in `dependencies` or `devDependencies`, and lists neither `next` nor `@tanstack/react-start`. If it lists `next`, or `@tanstack/react-start` together with `@tanstack/react-router`, use that stack's Passflow skill instead. If that stack's version rule fails (Next.js older than 16; TanStack Start older than 1.169.5 or TanStack Router older than 1.170.46; or a range that cannot be compared), stop: the project is refused, not handled as a React + Vite app.
+2. **A single-page app.** If the root `package.json` lists a framework that renders React on a server (`@tanstack/react-start` without `@tanstack/react-router`, `@react-router/dev`, `@remix-run/dev`, `vike`, `vite-plugin-ssr`, `waku`, `astro`, `rakkasjs`), stop: this skill is for a single-page app only.
 3. **An existing API.** The root `package.json`, or the `package.json` of an `api/` or `server/` folder, lists `express`, `fastify` or `hono`. If none does, stop and tell the user: "add an API first". Do not create one.
-4. **Node.js 22.12 or newer** (`node --version`).
-5. **Package manager.** Look at the project root:
+4. **Node.js 22.12 or newer.** On the developer's machine, check `node --version`. In a Passflow GitHub App run, skip this check: the runner provides the Node.js version.
+5. **Package manager.** Look at the project root, which takes only `package.json` and a Glob for the lockfiles:
    - a `packageManager` field in `package.json` that names `yarn@2` or newer, or `bun`, means Yarn Berry or Bun;
    - an `npm-shrinkwrap.json`: stop. npm would write the change into it, and this skill updates `package-lock.json`, `pnpm-lock.yaml` or `yarn.lock` only;
-   - otherwise the lockfiles, in this order: `pnpm-lock.yaml` → pnpm, `package-lock.json` → npm, `yarn.lock` → Yarn 1 (classic), `.yarnrc.yml` → Yarn Berry, `bun.lock` or `bun.lockb` → Bun. If any file present points to Yarn Berry or Bun, that decides; otherwise the first one present does. A `yarn.lock` with a `__metadata:` line is also Yarn Berry;
+   - otherwise the lockfiles, in this order: `pnpm-lock.yaml` → pnpm, `package-lock.json` → npm, `yarn.lock` → Yarn 1 (classic), `.yarnrc.yml` → Yarn Berry, `bun.lock` or `bun.lockb` → Bun. If any file present points to Yarn Berry or Bun, that decides; otherwise the first one present does. A `yarn.lock` with a `__metadata:` line (Grep for it) is also Yarn Berry;
    - no lockfile at all: stop. The change needs a committed lockfile. Tell the user to install once with npm, pnpm or Yarn 1 (classic) and commit the lockfile;
    - a `packageManager` field naming npm, pnpm or Yarn 1 while the lockfile belongs to another manager (`pnpm@9` beside `package-lock.json`): stop. Tell the user to make them agree.
 
@@ -37,18 +46,23 @@ Check each one before you change a file. If one fails, stop and tell the user wh
    | `VITE_API_URL` | SPA | The API's origin as the browser calls it. |
    | `PASSFLOW_ISSUER` | API | The same issuer URL as `VITE_PASSFLOW_URL`. |
    | `PASSFLOW_AUDIENCE` | API | The SPA app's client ID: the same value as `VITE_PASSFLOW_APP_ID`. |
-   | `APP_BASE_URL` | API | The SPA's URL, for example `http://localhost:5173`. Its origin is the one the API's CORS allows. |
+   | `APP_BASE_URL` | API | The SPA's origin, for example `http://localhost:5173`, with no path, query or fragment: an SPA served under a sub-path is not supported, and `npx passflow integrate` refuses a `--base-url` with a path. It is the origin the API's CORS allows. |
 
    - `PASSFLOW_AUDIENCE` is the SPA app's client ID, because the access tokens the SPA gets carry `aud = [app ID]`. Never invent an audience string such as `api` or a URL: every token would then get 401.
    - `VITE_API_URL` is not provisioned. When it is absent, the CLI writes `http://localhost:8086`, or the origin given to its `--api-url` flag. The developer sets it to the real API origin in each environment.
    - Nothing secret goes in a `VITE_` variable. Vite puts every `VITE_` value into the browser bundle. The SPA needs no secret, and this stack has none.
    - If `.env.local` is missing or a value is empty, do not invent values: carry on with the code, and the last step tells the developer how to get them.
-   - If `git ls-files --error-unmatch .env.local` succeeds, git tracks the file: stop. Tell the user to run `git rm --cached .env.local`, commit, and add `.env.local` to `.gitignore`.
+   - In a Passflow GitHub App run there is no `.env.local`: that is expected. Do not look for its values.
+   - A committed `.env.local`: stop. On the developer's machine, check with `git ls-files --error-unmatch .env.local`; success means git tracks it. In a Passflow GitHub App run, the checkout holds only committed files, so a `.env.local` that Glob finds at the root is committed. Tell the user to run `git rm --cached .env.local`, commit, and add `.env.local` to `.gitignore`.
 7. **App settings in Passflow.** The SPA app is of type `spa` with PKCE. Its redirect URLs include the SPA's root URL (`APP_BASE_URL` followed by `/`), and its allowed origins include the SPA's origin. An app the Passflow CLI or service created has both. For an app made by hand, the last step tells the developer to add them; sign-in fails with "redirect_uri not registered" without the first and at the token call without the second.
 
 ## Steps
 
-1. **Install the packages** with the project's package manager. Versions come from `PASSFLOW_REACT_VERSION` and `PASSFLOW_NODE_VERSION`; unset means the latest release. Run the lines as they are:
+1. **Install the packages.** `@passflow/react` goes into the SPA's `package.json`. `@passflow/node` goes into the API's: the root one when the API lives in the same package, else the API folder's. Install nothing else.
+
+   In a Passflow GitHub App run, call `add_passflow_package({ name: "@passflow/react" })` and `add_passflow_package({ name: "@passflow/node" })`. Each runs the detected package manager's add in the project root with lifecycle scripts off, and the runner picks the version. Do not edit a `package.json` or a lockfile by hand. If one returns a non-zero exit code, stop and report its tail. When the API has its own `package.json` in a folder, the tool cannot add `@passflow/node` there: stop before you copy anything, and tell the user that this layout needs the developer's machine (`npx passflow integrate`).
+
+   On the developer's machine, use the project's package manager. Versions come from `PASSFLOW_REACT_VERSION` and `PASSFLOW_NODE_VERSION`; unset means the latest release. Run the lines as they are, the `@passflow/node` one in the API's folder when it has its own `package.json`:
 
    ```sh
    npm install "@passflow/react${PASSFLOW_REACT_VERSION:+@$PASSFLOW_REACT_VERSION}"
@@ -61,8 +75,6 @@ Check each one before you change a file. If one fails, stop and tell the user wh
    pnpm add "@passflow/node${PASSFLOW_NODE_VERSION:+@$PASSFLOW_NODE_VERSION}"
    yarn add "@passflow/node${PASSFLOW_NODE_VERSION:+@$PASSFLOW_NODE_VERSION}"
    ```
-
-   `@passflow/react` goes into the SPA's `package.json`. `@passflow/node` goes into the API's: the root one when the API lives in the same package, else the API folder's (run the line in that folder). Install nothing else.
 
 2. **Find the API's code.** It is the code that creates the `express()`, `Fastify()` or `new Hono()` instance, in the package that lists the framework (precondition 3). Its folder is the API folder below: usually `server/` beside `src/` in the same package, or the separate `api/` or `server/` folder, or that folder's `src/`. Do not add a second server.
 
@@ -91,7 +103,7 @@ Check each one before you change a file. If one fails, stop and tell the user wh
 
    - Imports between these files use `./passflow.js`. Match the API's own relative imports: no extension, `.js`, or `.ts` when Node runs the `.ts` files as they are (`--experimental-strip-types`).
    - JavaScript or CommonJS API: as for the SPA, remove what is TypeScript only; for CommonJS turn each `import` into `require` and each `export` into a `module.exports` entry. The package ships CommonJS too.
-   - **`/api/me`.** The framework assets add `GET /api/me`, which `verify.sh run` calls. Look at the API's routes first. If it already has `/api/me`, do not add a second one: protect its handler in place (step 7), or change only the path string in the copied asset to an unused one such as `/api/passflow/me`, and pass that path to `verify.sh run --api`.
+   - **`/api/me`.** The framework assets add `GET /api/me`, which `verify.sh run` calls. Look at the API's routes first (Grep for `/api/me`). If it already has `/api/me`, do not add a second one: protect its handler in place (step 7), or change only the path string in the copied asset to an unused one such as `/api/passflow/me`, and pass that path to `verify.sh run --api`.
 
 5. **Wire the SPA.** In `src/main.tsx`, wrap the root component in `PassflowRoot`:
 
@@ -164,6 +176,7 @@ Check each one before you change a file. If one fails, stop and tell the user wh
    - **CORS package.** If it is missing: `npm install cors` (plus `npm install -D @types/cors` in a TypeScript API) for Express, or `npm install @fastify/cors` for Fastify, in the API's package and written for its package manager. Then copy the CORS asset and add the one line from step 6, before the routes.
    - **App settings.** For an app made by hand: add `<APP_BASE_URL's origin>/` to its redirect URLs and the origin to its allowed origins (precondition 7).
    - **Run and check.** The SPA with `npm run dev`, the API with its own start command, side by side. Then `bash <skill>/scripts/verify.sh run` with the API stopped (it starts its own copy), plus `--api <path>` when the route is not `/api/me`.
+   - In a Passflow GitHub App run, say also which of `run_typecheck()` and `run_build()` passed, and name the route path when it is not `/api/me`, so the runner's `verify.sh run` can be given `--api`.
 
 ## Guardrails
 
@@ -182,14 +195,16 @@ Read `references/guardrails.md` before you edit auth code. In short:
 
 ## Verification
 
-Run from the project root; `<skill>` is this skill's directory.
+On the developer's machine, run these from the project root; `<skill>` is this skill's directory:
 
 ```sh
 bash <skill>/scripts/verify.sh static
 bash <skill>/scripts/verify.sh run
 ```
 
-Add `--api-dir api` when the API has its own `package.json` somewhere other than `api/` or `server/` (those are found by themselves when their `package.json` lists `express`, `fastify` or `hono`). Both modes refuse a project with no such API: add an API first.
+In a Passflow GitHub App run, call `run_typecheck()`, then `run_build()`. If one returns a non-zero exit code, read its tail and fix the copied or wired code, then call it again. The fix never touches a `package.json` script, a dependency or a config file. The runner then runs `verify.sh static` (and `run` when it has env values) itself; you do not start it.
+
+What `verify.sh` checks. Add `--api-dir api` when the API has its own `package.json` somewhere other than `api/` or `server/` (those are found by themselves when their `package.json` lists `express`, `fastify` or `hono`). Both modes refuse a project with no such API: add an API first.
 
 - `static` needs no env values. It installs with lifecycle scripts off (the SPA, and the API folder when it is separate), type-checks the SPA (the `typecheck` script; else `tsc -b --noEmit` for a `tsconfig.json` with project references, as Vite's has, `tsc -p tsconfig.json --noEmit` otherwise) and the API (`server/tsconfig.json`, or the API folder's own check), and builds the SPA. A `VITE_` name that neither the environment nor `.env`, `.env.local`, `.env.production` or `.env.production.local` sets is built with a placeholder, so the bundle holds the whole app; the output says so, and that `dist/` is removed after the scans, so build again before you deploy. Then it scans `dist/` for the names and values of secrets (from `.env.local` and from the environment) and for the API's env names (which appear only when server code reached the bundle), checks that nothing in `src/` imports `@passflow/node`, a server framework or the API's code (relative imports are resolved to real paths, so a browser client in `src/api/` is fine; an alias such as `@/server/` is listed as a `SKIP` to check by hand), checks the env file has no secret-looking `VITE_` name, and scans the source for the guardrail breaks above.
 - `run` needs `.env.local` with `PASSFLOW_ISSUER`, `PASSFLOW_AUDIENCE` and `APP_BASE_URL`. It refuses when something already listens on the port (8086, or `--port`): stop the API you run yourself first. It starts the API with those three names and `PORT` set: the API's `api` script, a separate API folder's `start` or `dev` script, else `server/index.ts` with Node, or the file given with `--entry`; a separate API folder with `start` and `build` scripts is built first, and a build error fails the run. It checks that the process it started is the one answering on the port (with `lsof`; skipped without it). It calls `/api/me` (`--api`) with no token and expects 401 `Bearer` with `Cache-Control: no-store`, then with an invalid token and expects 401 `invalid_token`. With `Origin` set to `APP_BASE_URL`'s origin it checks that the 401 allows that origin and exposes `WWW-Authenticate`, and that a preflight allows the `Authorization` header; another origin gets the 401 without being allowed. The CORS checks are skipped, with the reason, when the API lacks its CORS package (`cors`, `@fastify/cors`) or with `--no-cors` (the SPA calls the API on its own origin, through a Vite proxy for example). A transport failure (no answer) is a `FAIL`. It fails if the API it started exits, and it stops that API at the end. It does not sign in: that takes a browser.
@@ -205,3 +220,4 @@ Each check prints `PASS`, `FAIL` or `SKIP` (a check that does not apply, such as
 - **The browser reports a CORS error.** `APP_BASE_URL` does not match the origin the SPA runs on, CORS is mounted after the routes, or the API has no CORS at all. See step 6.
 - **`TypeError: [passflow] issuer must be a non-empty string` when the API starts.** The API did not load `.env.local`. See step 8.
 - **`verify.sh run` refuses: something already listens on the port.** The API (or another server) is running there. Stop it, or pass a free `--port`.
+- **`npx passflow integrate` did not update this skill.** The CLI replaces only a skill copy it installed itself and that is unchanged, as recorded in `.passflow-skill.json`. A skill folder you changed is not overwritten: delete it to get the new version.

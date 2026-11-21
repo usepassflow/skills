@@ -60,7 +60,7 @@ Read this before you edit any auth code in the API. Each rule says what to do, w
 
 ## 9. The env file stays out of git
 
-- **Rule:** `.env` holds the real values and is never committed. If `git ls-files --error-unmatch .env` succeeds, stop and tell the user.
+- **Rule:** `.env` holds the real values and is never committed. On the developer's machine, if `git ls-files --error-unmatch .env` succeeds, stop and tell the user. In a Passflow GitHub App run the checkout holds only committed files, so a `.env` that Glob finds at the root is committed: stop and tell the user.
 - **Why:** a `.gitignore` line does not cover a file git already tracks.
 - **Instead:** tell the user to run `git rm --cached .env`, commit, and add `.env` to `.gitignore`. Do not edit `.env` yourself.
 - **Checked:** no.
