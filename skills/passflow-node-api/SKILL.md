@@ -2,6 +2,7 @@
 name: passflow-node-api
 description: Protects a Node.js HTTP API with Passflow access tokens using @passflow/node, on Express, Fastify or Hono. Use when asked to add Passflow auth to a Node backend, verify Passflow bearer tokens, or protect API routes with Passflow. Applies when the root package.json depends on express, fastify or hono, and not on next, @tanstack/react-start, or vite together with react (those have their own Passflow skills).
 compatibility: Node.js 22.12 or newer; Express 4 or 5, Fastify 5, Hono 4; npm, pnpm or Yarn 1.
+license: MIT
 ---
 
 # Passflow for a Node API

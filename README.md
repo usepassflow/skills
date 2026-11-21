@@ -92,3 +92,7 @@ The skills support npm, pnpm and Yarn 1. They stop on Yarn Berry and Bun.
 ## Checks
 
 `bash tools/check.sh` runs the repository checks: JSON files parse, the exact fields of `skills/index.json` and its copies, skill frontmatter, `skills/index.json` against the skill folders, shellcheck, identical `scripts/lib.sh` copies, content rules, and `tools/test.sh`, the detection tests against the fixtures in `tools/fixtures/`. CI runs it on every pull request. It needs `jq` and `shellcheck`.
+
+## Licence
+
+MIT. See [LICENSE](LICENSE).

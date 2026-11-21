@@ -2,6 +2,7 @@
 name: passflow-react-vite
 description: Adds Passflow sign-in to a React single-page app built with Vite, using @passflow/react in the browser, and protects the existing Node API it calls (Express, Fastify or Hono) with @passflow/node access-token checks and CORS for the app's origin. Use when asked to add Passflow sign-in or login to a React + Vite app, call an API with a Passflow token from a React SPA, or protect that SPA's backend with Passflow. Applies when the root package.json depends on both vite and react, and not on next or @tanstack/react-start (those have their own Passflow skills).
 compatibility: Node.js 22.12 or newer; React 18 or 19 with Vite; an existing API on Express 4 or 5, Fastify 5 or Hono 4; npm, pnpm or Yarn 1.
+license: MIT
 ---
 
 # Passflow for React + Vite with a Node API

@@ -2,6 +2,7 @@
 name: passflow-nextjs
 description: Adds Passflow sign-in on the server to a Next.js 16 App Router app using @passflow/nextjs. A proxy serves /auth/login, /auth/callback and /auth/logout, the session lives in an encrypted HttpOnly cookie, and pages, layouts, server actions and route handlers check it. Use when asked to add Passflow sign-in, login or auth to a Next.js app, or to protect Next.js pages, server actions or API routes with Passflow. Applies when the root package.json depends on next 16 or newer and not on @tanstack/react-start (that has its own Passflow skill).
 compatibility: Next.js 16 or newer with the App Router, React 19, Node.js 22.12 or newer; npm, pnpm or Yarn 1.
+license: MIT
 ---
 
 # Passflow for Next.js

@@ -2,6 +2,7 @@
 name: passflow-tanstack-start
 description: Adds Passflow sign-in on the server to a TanStack Start app using @passflow/tanstack-react-start. A request middleware serves /auth/login, /auth/callback and /auth/logout and checks the Origin of cookie-carrying changes, the session lives in an encrypted HttpOnly cookie, and route guards, server functions and server routes check it. Use when asked to add Passflow sign-in, login or auth to a TanStack Start app, or to protect TanStack Start routes, server functions or API routes with Passflow. Applies when the root package.json depends on @tanstack/react-start 1.169.5 or newer and @tanstack/react-router 1.170.46 or newer.
 compatibility: TanStack Start 1.169.5 or newer with TanStack Router 1.170.46 or newer (React), Node.js 22.12 or newer; npm, pnpm or Yarn 1.
+license: MIT
 ---
 
 # Passflow for TanStack Start
