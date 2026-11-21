@@ -20,7 +20,7 @@ The steps are the same in both places, except where a step is labelled.
   - `add_passflow_package({name})`, which adds one `@passflow/*` package with the project's package manager, scripts off;
   - `run_build()` and `run_typecheck()`, which each return the exit code and a short tail of the output.
 
-  Never try to run `curl`, `cat`, `npx`, `node` or a script there. The runner starts `verify.sh` after you finish.
+  Never try to run `curl`, `cat`, `npx`, `node` or a script there. After you finish, the runner runs the install, `run_build()`, `run_typecheck()` and then `verify.sh static`. It never runs `verify.sh run`, because the issuer and the client secret stay out of the sandbox: the draft PR's description tells the developer to run `bash <skill>/scripts/verify.sh run` on their machine before merging.
 
 ## Preconditions
 
@@ -33,7 +33,7 @@ Check each one before you change a file. Every check reads files with Read, Glob
 
    If either range fails, stop: the project needs TanStack Start 1.169.5 or newer and TanStack Router 1.170.46 or newer, written as version ranges. The package was tested with exactly those versions. Do not update them yourself. If `@tanstack/react-router` is not listed at all, the project is not detected as a TanStack Start app: stop and tell the user. The React + Vite skill refuses it too, naming the missing router.
 2. **Layout.** Glob for `src/routes/` (the default) or `app/routes/` (an older layout, or `srcDirectory: 'app'` in the Start plugin options in `vite.config.*`). Call the directory that holds `routes/` `<root>`: `src` or `app`, never the `routes` directory itself. So `<root>/lib/passflow.ts` is `src/lib/passflow.ts`, and `<root>/routes/api/me.ts` is `src/routes/api/me.ts`.
-3. **Node.js 22.12 or newer.** *On the developer's machine:* `node --version`. *In a Passflow GitHub App run:* the runner provides Node.js; skip this check.
+3. **Node.js 22.12 or newer.** *On the developer's machine:* `node --version`. *In a Passflow GitHub App run:* the runner checks for Node.js 22.12 or newer; you do not.
 4. **Package manager.** Glob the project root for lockfiles and Read the `packageManager` field of `package.json`:
    - a `packageManager` field that names `yarn@2` or newer, or `bun`, means Yarn Berry or Bun;
    - otherwise the lockfiles, in this order: `pnpm-lock.yaml` → pnpm, `package-lock.json` → npm, `yarn.lock` → Yarn 1 (classic), `.yarnrc.yml` → Yarn Berry, `bun.lock` or `bun.lockb` → Bun. If any file present points to Yarn Berry or Bun, that decides; otherwise the first one present does. A `yarn.lock` with a `__metadata:` line (Grep for it) is also Yarn Berry;
@@ -46,7 +46,7 @@ Check each one before you change a file. Every check reads files with Read, Glob
    - **You never create or edit any `.env*` file: not `.env`, not `.env.local`, not `.env.example`.** On the developer's machine, `npx passflow integrate` writes `.env.local` and `.env.example`. In a Passflow GitHub App run, the service writes `.env.example` with the public values filled in (`PASSFLOW_ISSUER`, `PASSFLOW_CLIENT_ID`, `APP_BASE_URL`) and the secrets empty (`PASSFLOW_CLIENT_SECRET`, `PASSFLOW_SECRET`). Empty secrets there are expected, not a failed setup.
    - If `.env.local` is missing or a value is empty, do not invent values. The code changes, the build and the type check need no values.
    - *On the developer's machine:* if `git ls-files --error-unmatch .env.local` succeeds, git tracks the file: stop. Tell the user to run `git rm --cached .env.local`, commit, and add `.env.local` to `.gitignore`.
-   - *In a Passflow GitHub App run:* the checkout holds only committed files, so a `.env.local` that Glob finds is tracked by git: stop and tell the user the same.
+   - *In a Passflow GitHub App run:* the service refuses a repository with a committed `.env`, `.env.local` or `.env.*.local` before you start, so there is nothing to check.
    - Never read out, print or repeat a value from an env file.
 6. **What you may change in `package.json`.** Only add `@passflow/tanstack-react-start` to `dependencies`, through step 1. Never add any other dependency, and never edit `scripts`. If a step seems to need either, stop and put it in the message to the developer (step 8).
 
@@ -61,7 +61,7 @@ Check each one before you change a file. Every check reads files with Read, Glob
      yarn add "@passflow/tanstack-react-start${PASSFLOW_TANSTACK_REACT_START_VERSION:+@$PASSFLOW_TANSTACK_REACT_START_VERSION}"
      ```
 
-   - *In a Passflow GitHub App run:* call `add_passflow_package({name: "@passflow/tanstack-react-start"})`. The service picks the version. Never edit `package.json` or the lockfile by hand.
+   - *In a Passflow GitHub App run:* call `add_passflow_package({name: "@passflow/tanstack-react-start"})`. The service pins the version, and the tool adds that exact version. Never edit `package.json` or the lockfile by hand.
 
 2. **Copy the assets.** Read each asset and Write it to its target. Asset paths start with `src/`, which stands for `<root>`: when `<root>` is `app`, `assets/src/lib/passflow.ts` goes to `app/lib/passflow.ts`. The assets import each other with relative paths. Do not change the Passflow calls in them.
 
@@ -75,7 +75,7 @@ Check each one before you change a file. Every check reads files with Read, Glob
    | `assets/src/lib/server-functions.example.ts` | not copied | The pattern for server functions (step 4). |
    | `assets/src/lib/call-api.example.ts` | `<root>/lib/call-api.ts`, only if server code calls an API as the user | The pattern for sending the access token to an API (step 7). |
 
-   **Before you add `/api/me`,** look for an existing route at that path. Glob for `<root>/routes/api/me.ts` or `.tsx`, `<root>/routes/api.me.ts` and `<root>/routes/api/me/index.ts`, and Grep `<root>/routes` for `createFileRoute('/api/me')`. If one exists, never overwrite it or add a second. Either protect that handler in place with the server-route pattern from step 4, or copy the asset to an unused path such as `<root>/routes/api/passflow/me.ts` and change its `createFileRoute('/api/me')` to `createFileRoute('/api/passflow/me')`. Name the path you used in the message to the developer (step 8), because `verify.sh run` then needs `--api /api/passflow/me`.
+   **Before you add `/api/me`,** look for an existing route at that path. Glob for `<root>/routes/api/me.ts` or `.tsx`, `<root>/routes/api.me.ts` and `<root>/routes/api/me/index.ts`, and Grep `<root>/routes` for `createFileRoute('/api/me')`. If one exists, never overwrite it or add a second. Either protect that handler in place with the server-route pattern from step 4, or copy the asset to an unused path such as `<root>/routes/api/passflow/me.ts` and change its `createFileRoute('/api/me')` to `createFileRoute('/api/passflow/me')`. Name the path you used in the message to the developer (step 8), because `verify.sh run` then needs `--api /api/passflow/me`. In a Passflow GitHub App run, name it in your final summary: the summary goes into the draft PR's description, which tells the developer to run `verify.sh run --api <path>` before merging.
 
    The router plugin regenerates `routeTree.gen.ts` on the next `dev` or `build`; do not edit it by hand.
 
@@ -130,7 +130,7 @@ Check each one before you change a file. Every check reads files with Read, Glob
 
 8. **Check your work, then tell the developer.**
    - *On the developer's machine:* run `bash <skill>/scripts/verify.sh static` (see Verification) and fix what it reports.
-   - *In a Passflow GitHub App run:* call `run_build()`, then `run_typecheck()`, and fix what they report. The build also writes the route tree the type check needs.
+   - *In a Passflow GitHub App run:* call `run_build()`, then `run_typecheck()`, and fix what they report. The build also writes the route tree the type check needs. `run_typecheck()` runs the same check as `verify.sh static`: the `typecheck` script, else `tsc -b` for a `tsconfig.json` with `references`, else `tsc -p tsconfig.json`.
 
    End with one message that lists what the developer does next, and change none of it yourself:
    - the env file: if `.env.local` is missing, `cp .env.example .env.local`, then fill in the values from the Passflow portal or the run page (`npx passflow integrate` writes it instead). If `.env.example` lacks a name from `assets/.env.example`, list that name;
@@ -161,7 +161,7 @@ bash <skill>/scripts/verify.sh static
 bash <skill>/scripts/verify.sh run
 ```
 
-*In a Passflow GitHub App run*, you run `run_build()` and `run_typecheck()` only (step 8). The runner runs `verify.sh` itself after you finish, and its result is part of the run.
+*In a Passflow GitHub App run*, you run `run_build()` and `run_typecheck()` only (step 8). The runner then runs `verify.sh static` itself, and its result is part of the run. It never runs `verify.sh run`; the draft PR's description tells the developer to run it on their machine before merging, with `--api <path>` when the route moved.
 
 - `static` needs no env values. It checks that `@passflow/tanstack-react-start` is a dependency and that `start.ts` registers `passflow.middleware()`, and lists `createCsrfMiddleware` with the server-function filter, installs with lifecycle scripts off, runs `build` (which also writes the route tree), then type-checks: the `typecheck` script when there is one, else `tsc -b --noEmit` for a solution-style `tsconfig.json`, else `tsc -p tsconfig.json --noEmit`. It searches `.output/public` and `dist/client` for the names `PASSFLOW_CLIENT_SECRET` and `PASSFLOW_SECRET`, for their values (from `.env.local` and from the process environment, never printed), and for `node:async_hooks`. It scans the source for the guardrail breaks above, including a `getSession`, `requireSession` or `getAccessToken` call in a route file outside a server function's handler and outside a server route. A helper module such as `call-api.example.ts` is not flagged; keep it called from server code only. It proves the copied calls compile and nothing secret or server-only reaches the browser.
 - `run` needs the developer's `.env.local` with all five values, a `build` script, and a `start` script, Nitro output or a `preview` script, on a free port (default 3101, `--port` to change), and a reachable `PASSFLOW_ISSUER`: `/auth/login` reads the issuer's discovery document before it redirects, and answers 503 when the issuer gives no answer within 10 seconds or answers with a 5xx. It builds, starts the app and checks, signed out: `/account` (change with `--page`) has no `data-passflow-protected` content and redirects to `/auth/login`, by a redirect status or a meta refresh, never only a sign-in link in the page; `/api/me` (change with `--api`) answers 401 with `Cache-Control: no-store`; `/auth/login` redirects to the issuer's `/oidc/authorize` with `code_challenge_method=S256` and sets an HttpOnly transaction cookie (`passflow_txn` over http, `__Host-passflow_txn` over https). Then it sends four `POST`s to `/api/me`: from `https://evil.example` carrying only `Cookie: passflow_session.0=x`, and carrying an ordinary cookie, each expecting 403; from `https://evil.example` with no cookie, expecting exactly 401, because the route answers it; and from `APP_BASE_URL`'s origin, expecting exactly 401. When the route answers the no-cookie `POST` with 405 (it has no `POST` handler), the no-cookie and same-origin checks are skipped with a reason; the two 403 checks still run, because the middleware answers them before the route. It stops the server it started.

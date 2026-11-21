@@ -1,6 +1,6 @@
 # Guardrails: TanStack Start
 
-Read this before you edit any auth code in the app. Each rule says what to do, why, what to do instead, and whether `scripts/verify.sh` checks it. On the developer's machine you run `verify.sh`; in a Passflow GitHub App run the runner runs it after you finish, and you check your work with `run_build()` and `run_typecheck()`.
+Read this before you edit any auth code in the app. Each rule says what to do, why, what to do instead, and whether `scripts/verify.sh` checks it. On the developer's machine you run `verify.sh`; in a Passflow GitHub App run you check your work with `run_build()` and `run_typecheck()`, the runner runs `verify.sh static` after you finish, and the developer runs `verify.sh run` on their machine before merging.
 
 ## 1. A route guard calls a server function; session reads stay on the server
 
@@ -67,7 +67,7 @@ Read this before you edit any auth code in the app. Each rule says what to do, w
 
 ## 10. The env file stays out of git
 
-- **Rule:** `.env.local` is never committed. On the developer's machine, if `git ls-files --error-unmatch .env.local` succeeds, stop and tell the user. In a Passflow GitHub App run, which has no shell, the checkout holds only committed files, so a `.env.local` that Glob finds is tracked: stop and tell the user.
+- **Rule:** `.env.local` is never committed. On the developer's machine, if `git ls-files --error-unmatch .env.local` succeeds, stop and tell the user. A Passflow GitHub App run never starts on such a repository: the service refuses a committed `.env`, `.env.local` or `.env.*.local` before the agent runs.
 - **Why:** a `.gitignore` line does not cover a file git already tracks.
 - **Instead:** tell the user to run `git rm --cached .env.local`, commit, and add `.env.local` to `.gitignore`.
 - **Checked:** no.

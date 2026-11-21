@@ -18,7 +18,7 @@ The only package this skill adds is `@passflow/node`. It never adds another depe
 The skill runs on one of two paths. Where a step differs, it is labelled.
 
 - **On the developer's machine** (`npx passflow integrate`, or an agent the developer runs): you have a shell. You install with the package manager and run `verify.sh` yourself.
-- **In a Passflow GitHub App run**: you have no shell. Your tools are Read, Write, Edit, Glob, Grep and Skill, plus `add_passflow_package({ name })`, `run_build()` and `run_typecheck()`. The last two return an exit code and a short tail of the output. The runner, not you, starts `verify.sh` afterwards.
+- **In a Passflow GitHub App run**: you have no shell. Your tools are Read, Write, Edit, Glob, Grep and Skill, plus `add_passflow_package({ name })`, `run_build()` and `run_typecheck()`. The last two return an exit code and a short tail of the output. After you finish, the runner runs the install, `run_build()`, `run_typecheck()` and then `verify.sh static`. It never runs `verify.sh run`, because the issuer and the client secret stay out of the sandbox: the draft PR's description tells the developer to run `bash <skill>/scripts/verify.sh run` on their machine before merging.
 
 Every other step uses only reading and writing files, so it is the same on both paths.
 
@@ -27,7 +27,7 @@ Every other step uses only reading and writing files, so it is the same on both 
 Check each one before you change a file. Read `package.json` and look for the files named below with Glob (Grep for a line inside one). If one fails, stop and tell the user why.
 
 1. **Stack.** The root `package.json` lists `express`, `fastify` or `hono` in `dependencies` or `devDependencies`. If it lists `@tanstack/react-start` with `@tanstack/react-router`, `next`, or both `vite` and `react`, use that stack's Passflow skill instead. Stacks are tried in this order, by package names, and the first match wins: TanStack Start, Next.js, React + Vite, Node API. If the first match fails its version rule, the project is refused; it never falls through to a later stack.
-2. **Node.js 22.12 or newer.** On the developer's machine, check `node --version`. In a Passflow GitHub App run, skip this check: the runner provides the Node.js version.
+2. **Node.js 22.12 or newer.** On the developer's machine, check `node --version`. In a Passflow GitHub App run, the runner checks for Node.js 22.12 or newer; you do not.
 3. **Package manager.** Look at the project root, which takes only `package.json` and a Glob for the lockfiles:
    - a `packageManager` field in `package.json` that names `yarn@2` or newer, or `bun`, means Yarn Berry or Bun;
    - an `npm-shrinkwrap.json`: stop. npm would write the change into it, and this skill updates `package-lock.json`, `pnpm-lock.yaml` or `yarn.lock` only;
@@ -39,7 +39,7 @@ Check each one before you change a file. Read `package.json` and look for the fi
 4. **Env file `.env`** at the project root, with `PASSFLOW_ISSUER` and `PASSFLOW_AUDIENCE`. You never create or edit it, and you never print its values.
    - `npx passflow integrate` writes it. In a Passflow GitHub App run, the service writes `.env.example` with the public values filled in (`PASSFLOW_ISSUER`, `PASSFLOW_AUDIENCE`) and any secret empty; this stack has no secret. Leave that file as it is. If `.env` is missing or a value is empty, do not invent values: carry on with the code, and the last step tells the developer how to get them (the issuer URL and the client ID of the Passflow app whose tokens this API accepts).
    - In a Passflow GitHub App run there is no `.env`: that is expected. Do not look for its values.
-   - A committed `.env`: stop. On the developer's machine, check with `git ls-files --error-unmatch .env`; success means git tracks it. In a Passflow GitHub App run, the checkout holds only committed files, so a `.env` that Glob finds at the root is committed. Tell the user to run `git rm --cached .env`, commit, and add `.env` to `.gitignore`.
+   - A committed `.env`: on the developer's machine, check with `git ls-files --error-unmatch .env`. If it succeeds, git tracks the file: stop. Tell the user to run `git rm --cached .env`, commit, and add `.env` to `.gitignore`. In a Passflow GitHub App run, the service refuses a repository with a committed `.env`, `.env.local` or `.env.*.local` before you start, so there is nothing to check.
 
 ## Steps
 
@@ -53,7 +53,7 @@ Check each one before you change a file. Read `package.json` and look for the fi
    yarn add "@passflow/node${PASSFLOW_NODE_VERSION:+@$PASSFLOW_NODE_VERSION}"
    ```
 
-   In a Passflow GitHub App run, call `add_passflow_package({ name: "@passflow/node" })`. It runs the detected package manager's add with lifecycle scripts off, and the runner picks the version. Do not edit `package.json` or the lockfile by hand. If it returns a non-zero exit code, stop and report its tail.
+   In a Passflow GitHub App run, call `add_passflow_package({ name: "@passflow/node" })`. It runs the detected package manager's add with lifecycle scripts off. The service pins the version, and the tool adds that exact version. Do not edit `package.json` or the lockfile by hand. If it returns a non-zero exit code, stop and report its tail.
 
 2. **Copy the assets.** Copy `assets/src/passflow.ts` and the file for the framework the project uses. Do not change the Passflow calls in them.
 
@@ -143,7 +143,7 @@ Check each one before you change a file. Read `package.json` and look for the fi
    - **Loading `.env`.** If the app does not load it already (dotenv, `--env-file`, its framework): start Node with `--env-file=.env`, for example `node --env-file=.env dist/server.js` in the start script.
    - **CORS package.** If a browser on another origin calls the API and the CORS package is missing: `npm install cors` (plus `npm install -D @types/cors` in a TypeScript project) for Express, or `npm install @fastify/cors` for Fastify, written for the project's package manager. Then copy the CORS asset and add the one line from step 3, before the routes.
    - **Check.** `bash <skill>/scripts/verify.sh run --port <the API's port>`, with `--origin <a browser origin it allows>` when there is CORS, and `--api <path>` when the route is not `/api/me`.
-   - In a Passflow GitHub App run, say also which checks `run_typecheck()` and `run_build()` passed, and name the route path when it is not `/api/me`, so the runner's `verify.sh run` can be given `--api`.
+   - In a Passflow GitHub App run, say also which of `run_typecheck()` and `run_build()` passed, and name the route path in your final summary when it is not `/api/me`. The summary goes into the draft PR's description, which tells the developer to run `verify.sh run --api <path>` before merging.
 
 ## Guardrails
 
@@ -167,7 +167,7 @@ bash <skill>/scripts/verify.sh static
 bash <skill>/scripts/verify.sh run --port <the API's port> [--origin <a browser origin it allows>]
 ```
 
-In a Passflow GitHub App run, call `run_typecheck()`, then `run_build()` when `package.json` has a `build` script. If one returns a non-zero exit code, read its tail and fix the copied or wired code, then call it again. The fix never touches a `package.json` script, a dependency or a config file. The runner then runs `verify.sh static` (and `run` when it has env values) itself; you do not start it.
+In a Passflow GitHub App run, call `run_typecheck()`, then `run_build()` when `package.json` has a `build` script. If one returns a non-zero exit code, read its tail and fix the copied or wired code, then call it again. The fix never touches a `package.json` script, a dependency or a config file. `run_typecheck()` runs the same check as `verify.sh static`: the `typecheck` script, else `tsc -b` for a `tsconfig.json` with `references`, else `tsc -p tsconfig.json`. The runner then runs `verify.sh static` itself, and its result is part of the run. It never runs `verify.sh run`; the draft PR's description tells the developer to run it on their machine before merging, with `--api <path>` when the route moved.
 
 What `verify.sh` checks:
 

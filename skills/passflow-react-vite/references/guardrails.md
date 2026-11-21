@@ -76,7 +76,7 @@ This stack keeps the user's tokens in browser storage. That is how `@passflow/re
 
 ## 11. The env file stays out of git
 
-- **Rule:** `.env.local` is never committed. On the developer's machine, if `git ls-files --error-unmatch .env.local` succeeds, stop and tell the user. In a Passflow GitHub App run the checkout holds only committed files, so a `.env.local` that Glob finds at the root is committed: stop and tell the user.
+- **Rule:** `.env.local` is never committed. On the developer's machine, if `git ls-files --error-unmatch .env.local` succeeds, stop and tell the user. A Passflow GitHub App run never starts on such a repository: the service refuses a committed `.env`, `.env.local` or `.env.*.local` before the agent runs.
 - **Why:** a `.gitignore` line does not cover a file git already tracks.
 - **Instead:** tell the user to run `git rm --cached .env.local`, commit, and add `.env.local` to `.gitignore`.
 - **Checked:** no.
