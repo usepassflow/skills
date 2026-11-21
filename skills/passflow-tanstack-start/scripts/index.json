@@ -45,7 +45,11 @@
         "all": [
           {
             "package": "@tanstack/react-start",
-            "range": ">=1.169"
+            "range": ">=1.169.5"
+          },
+          {
+            "package": "@tanstack/react-router",
+            "range": ">=1.170.46"
           }
         ]
       },

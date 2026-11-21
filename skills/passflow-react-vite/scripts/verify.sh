@@ -29,7 +29,7 @@ CLIENT_BUNDLE_DIRS='dist'
 # The API must already use one of these.
 API_FRAMEWORKS='express fastify hono'
 # React frameworks that render on a server; they list vite and react too, but are not single-page apps.
-SSR_FRAMEWORKS='@react-router/dev @remix-run/dev vike vite-plugin-ssr waku astro rakkasjs'
+SSR_FRAMEWORKS='@tanstack/react-start @react-router/dev @remix-run/dev vike vite-plugin-ssr waku astro rakkasjs'
 
 usage() {
   cat >&2 <<'EOF'
@@ -128,6 +128,12 @@ case "$STACK" in
 esac
 
 # Frameworks that render React on a server also list vite and react. This skill is for a single-page app.
+# A TanStack Start app is detected as tanstack-start only when it also lists @tanstack/react-router.
+if pf_has_dep "$DIR" @tanstack/react-start; then
+  printf 'REFUSED: package.json lists @tanstack/react-start but not @tanstack/react-router. The TanStack Start skill needs %s; this skill is for a React + Vite single-page app only.\n' \
+    "$(pf_stack_version_message tanstack-start)" >&2
+  exit 2
+fi
 for fw in $SSR_FRAMEWORKS; do
   if pf_has_dep "$DIR" "$fw"; then
     printf 'REFUSED: package.json lists %s, which renders on a server. This skill is for a React + Vite single-page app only.\n' "$fw" >&2

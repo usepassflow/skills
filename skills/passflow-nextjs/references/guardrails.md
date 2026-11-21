@@ -1,6 +1,6 @@
 # Guardrails: Next.js
 
-Read this before you edit any auth code in the app. Each rule says what to do, why, what to do instead, and whether `scripts/verify.sh` checks it.
+Read this before you edit any auth code in the app. Each rule says what to do, why, what to do instead, and whether `scripts/verify.sh` checks it. On the developer's machine you run `verify.sh`; in a Passflow GitHub App run you check your work with `run_build()` and `run_typecheck()`, the runner runs `verify.sh static` after you finish, and the developer runs `verify.sh run` on their machine before merging.
 
 ## 1. Check the session in server code, never in the proxy alone
 
@@ -47,7 +47,7 @@ Read this before you edit any auth code in the app. Each rule says what to do, w
 ## 7. SameSite cookies plus an Origin check on changes
 
 - **Rule:** a route handler that changes data starts with `if (!passflow.isSameOrigin(request))` and answers 403.
-- **Why:** the session cookie is `SameSite=Lax`, which still lets a same-site page on another origin send it. Server actions have Next.js's own Origin check; route handlers do not.
+- **Why:** the session cookie (`__Host-passflow_session` on https, `passflow_session` on http localhost) is `SameSite=Lax`, which still lets a same-site page on another origin send it. Server actions have Next.js's own Origin check; route handlers do not.
 - **Instead:** copy the `POST` handler of `assets/app/api/me/route.ts`. Do not loosen the cookie or add CORS for the app's own routes.
 - **Checked:** `verify.sh run` sends a `POST` from `https://evil.example` and expects 403, and from the app's own origin and expects 401.
 
@@ -61,7 +61,7 @@ Read this before you edit any auth code in the app. Each rule says what to do, w
 ## 9. Sign-in and sign-out links are plain `<a href>`
 
 - **Rule:** links to `/auth/login` and `/auth/logout` are `<a href>`, never `next/link`.
-- **Why:** both routes act on GET. `next/link` prefetches, which would start a sign-in or sign the user out without a click, and the client router cannot render a route the proxy serves.
+- **Why:** both routes act on GET, and `next/link` prefetches. `/auth/logout` ignores a prefetch and a request another site starts, so a prefetch never signs the user out, but a prefetch of `/auth/login` can still start a sign-in before anyone clicks. The client router also cannot render a route the proxy serves. A plain `<a href>` keeps sign-in and sign-out working.
 - **Instead:** render `<AuthLinks />` from `assets/components/auth-links.tsx` inside `<Suspense>`, in a server component. Pass `returnTo` to come back to a page after sign-in: `<AuthLinks returnTo="/account" />`. A client component that needs a link writes a plain `<a href="/auth/login?returnTo=…">` or `<a href="/auth/logout">` itself.
 - **Checked:** `verify.sh static` fails on a `<Link` whose `href` starts with `/auth/`.
 
@@ -74,7 +74,7 @@ Read this before you edit any auth code in the app. Each rule says what to do, w
 
 ## 11. The env file stays out of git
 
-- **Rule:** `.env.local` is never committed. If `git ls-files --error-unmatch .env.local` succeeds, stop and tell the user.
+- **Rule:** `.env.local` is never committed. On the developer's machine, if `git ls-files --error-unmatch .env.local` succeeds, stop and tell the user. A Passflow GitHub App run never starts on such a repository: the service refuses a committed `.env`, `.env.local` or `.env.*.local` before the agent runs.
 - **Why:** a `.gitignore` line does not cover a file git already tracks.
 - **Instead:** tell the user to run `git rm --cached .env.local`, commit, and add `.env.local` to `.gitignore`.
 - **Checked:** no.

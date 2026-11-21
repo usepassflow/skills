@@ -8,6 +8,7 @@
   },
   "homepage": "https://github.com/usepassflow/skills",
   "repository": "https://github.com/usepassflow/skills",
+  "license": "MIT",
   "keywords": [
     "passflow",
     "authentication",

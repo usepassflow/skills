@@ -1,6 +1,6 @@
 # Guardrails: TanStack Start
 
-Read this before you edit any auth code in the app. Each rule says what to do, why, what to do instead, and whether `scripts/verify.sh` checks it.
+Read this before you edit any auth code in the app. Each rule says what to do, why, what to do instead, and whether `scripts/verify.sh` checks it. On the developer's machine you run `verify.sh`; in a Passflow GitHub App run you check your work with `run_build()` and `run_typecheck()`, the runner runs `verify.sh static` after you finish, and the developer runs `verify.sh run` on their machine before merging.
 
 ## 1. A route guard calls a server function; session reads stay on the server
 
@@ -40,7 +40,7 @@ Read this before you edit any auth code in the app. Each rule says what to do, w
 ## 6. SameSite cookies plus two Origin checks
 
 - **Rule:** `requestMiddleware` in `start.ts` starts with `createCsrfMiddleware({ filter: (ctx) => ctx.handlerType === 'serverFn' })` and `passflow.middleware()`.
-- **Why:** registering any request middleware turns off Start's default protection for server functions, so Start's own CSRF middleware is listed again, limited to server-function calls as Start's default is. Without the filter it refuses every page load that comes from another site, including the return from sign-in, and every request with no `Origin`, `Referer` or `Sec-Fetch-Site`. The session cookie is `SameSite=Lax`, which still lets a same-site page on another origin send it. Passflow's middleware refuses with 403 every request other than GET, HEAD and OPTIONS that carries any `Cookie` header and comes from another origin, so the app's other cookie-based endpoints keep that protection too. Requests without cookies, such as webhooks, pass.
+- **Why:** registering any request middleware turns off Start's default protection for server functions, so Start's own CSRF middleware is listed again, limited to server-function calls as Start's default is. Without the filter it refuses every page load that comes from another site, including the return from sign-in, and every request with no `Origin`, `Referer` or `Sec-Fetch-Site`. The session cookie (`__Host-passflow_session` on https, `passflow_session` on http localhost) is `SameSite=Lax`, which still lets a same-site page on another origin send it. Passflow's middleware refuses with 403 every request other than GET, HEAD and OPTIONS that carries any `Cookie` header and comes from another origin, whatever the cookie's name, so the app's other cookie-based endpoints keep that protection too. Requests without cookies, such as webhooks, pass.
 - **Instead:** copy the two lines from `assets/src/start.ts` exactly, filter included, and keep the project's own items after them. Never call `createCsrfMiddleware()` bare. Do not add CORS for the app's own routes.
 - **Checked:** `verify.sh static` fails when `start.ts` does not register Passflow's middleware, or lacks `createCsrfMiddleware` with the server-function filter. `verify.sh run` sends cross-site `POST`s to the server route: one carrying only `passflow_session.0` and one carrying an ordinary cookie each expect 403; one with no cookie expects exactly 401, the route's own signed-out answer. A same-origin `POST` also expects exactly 401. When the route answers the no-cookie `POST` with 405 (it has no `POST` handler), the no-cookie and same-origin checks are skipped with a reason; the two 403 checks still run, because the middleware answers them before the route.
 
@@ -54,7 +54,7 @@ Read this before you edit any auth code in the app. Each rule says what to do, w
 ## 8. Sign-in and sign-out links are plain `<a href>`
 
 - **Rule:** links to `/auth/login` and `/auth/logout` are `<a href>`, never the router's `<Link>`.
-- **Why:** these paths are served by the middleware, not by a route, and act on GET. `<Link>` preloads on intent, which would start a sign-in or sign the user out without a click.
+- **Why:** these paths are served by the middleware, not by a route, and act on GET, and `<Link>` preloads on intent. `/auth/logout` ignores a preload and a request another site starts, so a preload never signs the user out, but a preload of `/auth/login` can still start a sign-in before anyone clicks. A plain `<a href>` keeps sign-in and sign-out working.
 - **Instead:** render `<AuthLinks user={user} />` from `assets/src/components/auth-links.tsx`, with the user from `requireUser` or `getUser`, as `assets/src/routes/account.tsx` does. Pass `returnTo` to come back to a page after sign-in. A component that needs its own link writes a plain `<a href="/auth/login?returnTo=…">` or `<a href="/auth/logout">`.
 - **Checked:** `verify.sh static` fails on a `<Link` whose `href` or `to` starts with `/auth/`.
 
@@ -67,7 +67,7 @@ Read this before you edit any auth code in the app. Each rule says what to do, w
 
 ## 10. The env file stays out of git
 
-- **Rule:** `.env.local` is never committed. If `git ls-files --error-unmatch .env.local` succeeds, stop and tell the user.
+- **Rule:** `.env.local` is never committed. On the developer's machine, if `git ls-files --error-unmatch .env.local` succeeds, stop and tell the user. A Passflow GitHub App run never starts on such a repository: the service refuses a committed `.env`, `.env.local` or `.env.*.local` before the agent runs.
 - **Why:** a `.gitignore` line does not cover a file git already tracks.
 - **Instead:** tell the user to run `git rm --cached .env.local`, commit, and add `.env.local` to `.gitignore`.
 - **Checked:** no.

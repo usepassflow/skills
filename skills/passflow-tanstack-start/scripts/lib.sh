@@ -26,7 +26,7 @@
 #                  pf_stack_get INDEX STACK_ID KEY... (a stack's field from index.json)
 #                  pf_detect_stack DIR INDEX          (stack id, "refused:<stack id>" or "unsupported")
 #                  pf_stack_refusal DIR INDEX STACK_ID (the message for "refused:<stack id>")
-#                  pf_stack_version_message STACK_ID  ("Next.js 16 or newer", "TanStack Start 1.169 or newer")
+#                  pf_stack_version_message STACK_ID  ("Next.js 16 or newer", "TanStack Start 1.169.5 or newer with ...")
 #   Packages:      pf_detect_pm DIR [INDEX]           (npm | pnpm | yarn-classic | yarn-berry | bun | shrinkwrap
 #                                                      | mismatch:<declared>:<lockfile's> | none)
 #                  pf_pm_supported PM | pf_pm_refused PM
@@ -398,7 +398,7 @@ pf_detect_stack() {
 pf_stack_version_message() {
   case "$1" in
     nextjs) printf 'Next.js 16 or newer\n' ;;
-    tanstack-start) printf 'TanStack Start 1.169 or newer\n' ;;
+    tanstack-start) printf 'TanStack Start 1.169.5 or newer with TanStack Router 1.170.46 or newer\n' ;;
     *) printf 'a newer version of its framework\n' ;;
   esac
 }

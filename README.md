@@ -24,6 +24,8 @@ Each skill has:
 
 A skill adds only `@passflow/*` packages. It never adds another dependency, never edits `package.json` scripts and never creates or edits a `.env*` file: the Passflow CLI writes `.env.local` and `.env.example`, and the Passflow service writes `.env.example`. Anything else the app needs (a CORS package, a start flag that loads the env file, the env values) is listed in the agent's final message for the developer. The React + Vite skill needs an existing API on Express, Fastify or Hono; without one it stops and asks for one.
 
+A skill runs on two paths. On the developer's machine (`npx passflow integrate`, or an agent the developer runs) the agent has a shell: it installs with the package manager and runs `verify.sh` itself. In a Passflow GitHub App run the agent has no shell, only file tools plus `add_passflow_package` (exact versions the service pins), `run_build` and `run_typecheck`. The runner then runs `verify.sh static`; `verify.sh run` needs the issuer and the client secret, so the draft PR asks the developer to run it before merging.
+
 `skills/index.json` holds the detection rules: which stack an app is, its env file and keys, its package manager, and the paths a change may touch. The Passflow CLI and the Passflow GitHub App read it, and they refuse a field they do not know. Each skill carries a byte-identical copy in `scripts/index.json`, which its `verify.sh` reads.
 
 ## Install
@@ -42,6 +44,8 @@ npx skills add usepassflow/skills
 ```
 
 Then ask your agent to add Passflow sign-in. It picks the skill for your stack.
+
+`npx passflow integrate` records the skill copies it installs in `.passflow-skill.json` and replaces a copy only while it is unchanged. A skill folder you changed is not overwritten: delete it to get the new version.
 
 ## Package versions
 
@@ -69,10 +73,10 @@ The skills support npm, pnpm and Yarn 1. They stop on Yarn Berry and Bun.
 - Top level: `schema` (1), `package_managers`, `stacks`.
 - `package_managers`: `supported` (npm, pnpm, yarn-classic), `refused` (yarn-berry, bun), and `detect`, a list of `{file, manager}`.
 - Each stack: `id`, `skill`, `detect`, `app_type`, `default_base_url`, `env_file`, `env_keys`, `secret_env_keys`, `not_provisioned_env_keys`, `packages` (`{name, version_env, env_keys}`), `allowed_paths`, `denied_paths`.
-- `detect` is `{all: [{package, range?}], any: [{package, range?}]}`. A range is written `>=16` or `>=1.169`.
+- `detect` is `{all: [{package, range?}], any: [{package, range?}]}`. A range is written `>=16` or `>=1.169.5`.
 - `allowed_paths` and `denied_paths` are globs matched against the path from the repository root: `src/**` covers everything under the root's `src/` and nothing under `packages/web/src/`. `*` matches within one folder, `**` across folders, and `**/` at the start matches at any depth (`**/.env*`). A plain name such as `proxy.ts` is that file at the root only.
 
-**Choosing a stack.** Read `dependencies` and `devDependencies` of the root `package.json`. Try the stacks in array order. A stack is chosen by package names alone: every `all` package is present and, when there is an `any` list, at least one `any` package is. The first stack chosen wins. Its range rules must then hold, or the project is refused: "Next.js 16 or newer", "TanStack Start 1.169 or newer". It never falls through to a later stack. A range that cannot be compared counts as failing: a tag such as `latest`, `workspace:`, a URL, `a || b`, `a - b`, and an empty version (`"next": ""`), which still chooses the stack. A prerelease never meets a rule, as in npm: `16.1.0-rc.1` fails "16 or newer".
+**Choosing a stack.** Read `dependencies` and `devDependencies` of the root `package.json`. Try the stacks in array order. A stack is chosen by package names alone: every `all` package is present and, when there is an `any` list, at least one `any` package is. The first stack chosen wins. Its range rules must then hold, or the project is refused: "Next.js 16 or newer", "TanStack Start 1.169.5 or newer with TanStack Router 1.170.46 or newer". TanStack Start lists both `@tanstack/react-start` and `@tanstack/react-router` under `all`, so a project without the router is not a TanStack Start app here (the React + Vite skill refuses it too). It never falls through to a later stack. A range that cannot be compared counts as failing: a tag such as `latest`, `workspace:`, a URL, `a || b`, `a - b`, and an empty version (`"next": ""`), which still chooses the stack. A prerelease never meets a rule, as in npm: `16.1.0-rc.1` fails "16 or newer".
 
 **Choosing a package manager.**
 
@@ -88,3 +92,7 @@ The skills support npm, pnpm and Yarn 1. They stop on Yarn Berry and Bun.
 ## Checks
 
 `bash tools/check.sh` runs the repository checks: JSON files parse, the exact fields of `skills/index.json` and its copies, skill frontmatter, `skills/index.json` against the skill folders, shellcheck, identical `scripts/lib.sh` copies, content rules, and `tools/test.sh`, the detection tests against the fixtures in `tools/fixtures/`. CI runs it on every pull request. It needs `jq` and `shellcheck`.
+
+## Licence
+
+MIT. See [LICENSE](LICENSE).

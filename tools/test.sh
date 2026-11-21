@@ -164,9 +164,9 @@ echo "# Stacks"
 # REQ-9: next <16 is selected as nextjs (first in array order) and refused, no fall-through to react-vite.
 expect_refused "REQ-9 next ^15 + vite + react is refused via passflow-nextjs" passflow-nextjs stack-next15-vite 'Next\.js 16 or newer'
 expect_refused "REQ-9 next ^15 + vite + react is refused via passflow-react-vite" passflow-react-vite stack-next15-vite 'Next\.js 16 or newer'
-# REQ-10: @tanstack/react-start <1.169 is refused.
-expect_refused "REQ-10 @tanstack/react-start ^1.168.0 is refused via passflow-tanstack-start" passflow-tanstack-start stack-start-1168 'TanStack Start 1\.169 or newer'
-expect_refused "REQ-10 @tanstack/react-start ^1.168.0 is refused via passflow-react-vite" passflow-react-vite stack-start-1168 'TanStack Start 1\.169 or newer'
+# REQ-10: @tanstack/react-start <1.169 is refused (the fixture lists @tanstack/react-router too, so the stack is chosen).
+expect_refused "REQ-10 @tanstack/react-start ^1.168.0 is refused via passflow-tanstack-start" passflow-tanstack-start stack-start-1168 'TanStack Start 1\.169\.5 or newer'
+expect_refused "REQ-10 @tanstack/react-start ^1.168.0 is refused via passflow-react-vite" passflow-react-vite stack-start-1168 'TanStack Start 1\.169\.5 or newer'
 # REQ-11: a range that cannot be compared (workspace:*) counts as failing.
 expect_refused "REQ-11 next workspace:* is refused" passflow-nextjs stack-next-workspace 'Next\.js 16 or newer'
 # REQ-16: prereleases follow npm semver; 16.0.0-rc.1 does not satisfy >=16.
@@ -184,6 +184,18 @@ expect_refused "REQ-17 next \"\" + vite + react is refused via passflow-react-vi
 echo "# Prerelease above the floor"
 # REQ-18: a prerelease above the floor's version (16.1.0-rc.1) still does not satisfy >=16, as in npm.
 expect_refused "REQ-18 next 16.1.0-rc.1 is refused as an unsupported version" passflow-nextjs stack-next-rc-minor 'Next\.js 16 or newer'
+
+echo "# TanStack Start and Router versions"
+# REQ-19: @tanstack/react-start 1.169.4 (below 1.169.5) is refused; the message names both packages.
+expect_refused "REQ-19 @tanstack/react-start 1.169.4 is refused" passflow-tanstack-start stack-start-1169-4 'TanStack Start 1\.169\.5 or newer with TanStack Router 1\.170\.46 or newer'
+# REQ-20: @tanstack/react-router 1.170.45 (below 1.170.46) is refused.
+expect_refused "REQ-20 @tanstack/react-router 1.170.45 is refused" passflow-tanstack-start stack-router-1170-45 'react-router.*1\.170\.45.*>=1\.170\.46'
+# REQ-21: @tanstack/react-start without @tanstack/react-router is not detected as tanstack-start, and the
+# React + Vite skill refuses it too.
+expect_refused "REQ-21 @tanstack/react-start without the router is not tanstack-start" passflow-tanstack-start stack-start-no-router 'does not describe a TanStack Start app \(detected: react-vite\)'
+expect_refused "REQ-21 @tanstack/react-start without the router is refused via passflow-react-vite" passflow-react-vite stack-start-no-router 'not @tanstack/react-router'
+# REQ-22: Start ^1.169.5 with Router ^1.170.46 is accepted.
+expect_accepted "REQ-22 @tanstack/react-start ^1.169.5 + @tanstack/react-router ^1.170.46 is accepted (npm install)" passflow-tanstack-start stack-start-ok npm
 
 echo "# Repo structure"
 # REQ-13: every skills/<name>/scripts/index.json is byte-identical to skills/index.json.

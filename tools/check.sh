@@ -7,11 +7,11 @@
 #    skills/index.json has exactly the schema-1 fields (an unknown field anywhere fails), and no file a
 #    skill writes is both allowed and denied. Each skill's scripts/index.json is a byte-identical copy.
 # 2. Every skills/*/SKILL.md has frontmatter with name = its directory, a description of at most
-#    1024 characters, and no keys other than name, description and compatibility.
+#    1024 characters, and no keys other than name, description, compatibility and license (which must be MIT).
 # 3. Every skill in skills/index.json exists, and every skill directory is in skills/index.json.
 # 4. shellcheck passes on every *.sh.
 # 5. scripts/lib.sh is byte-identical in every skill.
-# 6. No image files, no LICENSE file, no license field, and no banned words.
+# 6. No image files, a LICENSE file with the MIT licence, and no banned words.
 # 7. tools/test.sh passes, when it exists.
 #
 # Needs jq and shellcheck. Exit 0 when every check passes, 1 otherwise, 2 when a tool is missing.
@@ -301,8 +301,14 @@ for skill_md in skills/*/SKILL.md; do
   for key in $keys; do
     case "$key" in
       name | description | compatibility) ;;
+      license)
+        if [ "$(printf '%s\n' "$frontmatter" | sed -n 's/^license:[[:space:]]*//p')" != MIT ]; then
+          fail frontmatter "$skill_md: license must be MIT"
+          fm_ok=0
+        fi
+        ;;
       *)
-        fail frontmatter "$skill_md: key '$key' is not allowed (name, description, compatibility)"
+        fail frontmatter "$skill_md: key '$key' is not allowed (name, description, compatibility, license)"
         fm_ok=0
         ;;
     esac
@@ -376,9 +382,12 @@ if [ -n "$images" ]; then
   fail content "image files are not allowed: $(printf '%s' "$images" | tr '\n' ' ')"
   content_ok=0
 fi
-licenses="$(printf '%s\n' "$FILES" | grep -iE '(^|/)(LICEN[CS]E|COPYING)[^/]*$' || true)"
-if [ -n "$licenses" ]; then
-  fail content "no LICENSE file: $(printf '%s' "$licenses" | tr '\n' ' ')"
+if ! head -n 1 LICENSE 2>/dev/null | grep -qx "MIT License"; then
+  fail content "LICENSE must exist and hold the MIT License"
+  content_ok=0
+fi
+if [ "$(jq -r .license .claude-plugin/plugin.json)" != MIT ] || [ "$(jq -r ".plugins[0].license" .claude-plugin/marketplace.json)" != MIT ]; then
+  fail content "plugin.json and marketplace.json must say license MIT"
   content_ok=0
 fi
 
@@ -394,7 +403,6 @@ scan() {
     content_ok=0
   fi
 }
-scan 'license field' '"license"[[:space:]]*:|^license:' '-i'
 scan 'the phrase "open source"' 'open[- ]source' '-i'
 scan 'issue tracker reference' '\bLinear\b|\bPFL-[0-9]+|\btickets?\b' ''
 scan 'work-plan reference' '\bphase [0-9]+\b' '-i'
