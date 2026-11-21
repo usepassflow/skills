@@ -1,0 +1,19 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "passflow",
+  "description": "Passflow sign-in for Node APIs, Next.js, React + Vite and TanStack Start",
+  "owner": {
+    "name": "Passflow",
+    "email": "support@passflow.cloud"
+  },
+  "plugins": [
+    {
+      "name": "passflow",
+      "source": "./",
+      "description": "Agent skills that add Passflow sign-in to a Node API, a Next.js app, a React + Vite app with a Node API, or a TanStack Start app, and check the result.",
+      "version": "0.1.0",
+      "category": "security",
+      "homepage": "https://github.com/usepassflow/skills"
+    }
+  ]
+}

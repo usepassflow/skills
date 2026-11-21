@@ -1,0 +1,24 @@
+{
+  "name": "passflow",
+  "version": "0.1.0",
+  "description": "Agent skills that add Passflow sign-in to a Node API, a Next.js app, a React + Vite app with a Node API, or a TanStack Start app, and check the result.",
+  "author": {
+    "name": "Passflow",
+    "email": "support@passflow.cloud"
+  },
+  "homepage": "https://github.com/usepassflow/skills",
+  "repository": "https://github.com/usepassflow/skills",
+  "keywords": [
+    "passflow",
+    "authentication",
+    "sign-in",
+    "oidc",
+    "nextjs",
+    "tanstack-start",
+    "react",
+    "vite",
+    "express",
+    "fastify",
+    "hono"
+  ]
+}
