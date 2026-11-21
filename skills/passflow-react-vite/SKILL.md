@@ -102,7 +102,7 @@ Check each one before you change a file. Read the `package.json` files and look 
    | `assets/server/hono-cors.ts` | `passflow-hono-cors.ts` | Hono with no CORS middleware yet (`hono/cors` ships with `hono`). |
    | `assets/server/tsconfig.json` | `server/tsconfig.json` | Only when the API's TypeScript files sit in the SPA's package in `server/` and nothing type-checks them yet. |
 
-   - Imports between these files use `./passflow.js`. Match the API's own relative imports: no extension, `.js`, or `.ts` when Node runs the `.ts` files as they are (`--experimental-strip-types`).
+   - Imports between these files use `./passflow.js`, which fits an API built with `tsc` and one run with `tsx`. Change it to match the API's own relative imports: drop the extension when they have none (a bundler); use `./passflow.ts` when Node runs the `.ts` files as they are (`node --experimental-strip-types`, or `node` on a `.ts` entry), because Node then loads the file by its real name.
    - JavaScript or CommonJS API: as for the SPA, remove what is TypeScript only; for CommonJS turn each `import` into `require` and each `export` into a `module.exports` entry. The package ships CommonJS too.
    - **`/api/me`.** The framework assets add `GET /api/me`, which `verify.sh run` calls. Look at the API's routes first (Grep for `/api/me`). If it already has `/api/me`, do not add a second one: protect its handler in place (step 7), or change only the path string in the copied asset to an unused one such as `/api/passflow/me`, and pass that path to `verify.sh run --api`.
 
