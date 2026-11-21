@@ -1,0 +1,401 @@
+{
+  "schema": 1,
+  "package_managers": {
+    "supported": [
+      "npm",
+      "pnpm",
+      "yarn-classic"
+    ],
+    "refused": [
+      "yarn-berry",
+      "bun"
+    ],
+    "detect": [
+      {
+        "file": "pnpm-lock.yaml",
+        "manager": "pnpm"
+      },
+      {
+        "file": "package-lock.json",
+        "manager": "npm"
+      },
+      {
+        "file": "yarn.lock",
+        "manager": "yarn-classic"
+      },
+      {
+        "file": ".yarnrc.yml",
+        "manager": "yarn-berry"
+      },
+      {
+        "file": "bun.lock",
+        "manager": "bun"
+      },
+      {
+        "file": "bun.lockb",
+        "manager": "bun"
+      }
+    ]
+  },
+  "stacks": [
+    {
+      "id": "tanstack-start",
+      "skill": "passflow-tanstack-start",
+      "detect": {
+        "all": [
+          {
+            "package": "@tanstack/react-start",
+            "range": ">=1.169"
+          }
+        ]
+      },
+      "app_type": "bff",
+      "default_base_url": "http://localhost:3000",
+      "env_file": ".env.local",
+      "env_keys": [
+        "PASSFLOW_ISSUER",
+        "PASSFLOW_CLIENT_ID",
+        "PASSFLOW_CLIENT_SECRET",
+        "PASSFLOW_SECRET",
+        "APP_BASE_URL"
+      ],
+      "secret_env_keys": [
+        "PASSFLOW_CLIENT_SECRET",
+        "PASSFLOW_SECRET"
+      ],
+      "not_provisioned_env_keys": [],
+      "packages": [
+        {
+          "name": "@passflow/tanstack-react-start",
+          "version_env": "PASSFLOW_TANSTACK_REACT_START_VERSION",
+          "env_keys": [
+            "PASSFLOW_ISSUER",
+            "PASSFLOW_CLIENT_ID",
+            "PASSFLOW_CLIENT_SECRET",
+            "PASSFLOW_SECRET",
+            "APP_BASE_URL"
+          ]
+        }
+      ],
+      "allowed_paths": [
+        "src/**",
+        "app/**",
+        ".gitignore",
+        "package.json",
+        "package-lock.json",
+        "pnpm-lock.yaml",
+        "yarn.lock"
+      ],
+      "denied_paths": [
+        "next.config.*",
+        "vite.config.*",
+        "vitest.config.*",
+        "app.config.*",
+        "tsconfig*.json",
+        "jsconfig*.json",
+        "postcss.config.*",
+        "tailwind.config.*",
+        "eslint.config.*",
+        ".eslintrc*",
+        "babel.config.*",
+        ".babelrc*",
+        "turbo.json",
+        "nx.json",
+        "Dockerfile*",
+        "docker-compose*",
+        ".github/**",
+        ".env*",
+        "**/.env*",
+        "scripts/**",
+        ".npmrc",
+        "**/.npmrc",
+        ".yarnrc",
+        ".yarnrc.yml",
+        ".yarn/**",
+        ".pnp.cjs",
+        ".pnp.loader.mjs",
+        "pnpm-workspace.yaml",
+        "npm-shrinkwrap.json",
+        "bun.lock",
+        "bun.lockb"
+      ]
+    },
+    {
+      "id": "nextjs",
+      "skill": "passflow-nextjs",
+      "detect": {
+        "all": [
+          {
+            "package": "next",
+            "range": ">=16"
+          }
+        ]
+      },
+      "app_type": "bff",
+      "default_base_url": "http://localhost:3000",
+      "env_file": ".env.local",
+      "env_keys": [
+        "PASSFLOW_ISSUER",
+        "PASSFLOW_CLIENT_ID",
+        "PASSFLOW_CLIENT_SECRET",
+        "PASSFLOW_SECRET",
+        "APP_BASE_URL"
+      ],
+      "secret_env_keys": [
+        "PASSFLOW_CLIENT_SECRET",
+        "PASSFLOW_SECRET"
+      ],
+      "not_provisioned_env_keys": [],
+      "packages": [
+        {
+          "name": "@passflow/nextjs",
+          "version_env": "PASSFLOW_NEXTJS_VERSION",
+          "env_keys": [
+            "PASSFLOW_ISSUER",
+            "PASSFLOW_CLIENT_ID",
+            "PASSFLOW_CLIENT_SECRET",
+            "PASSFLOW_SECRET",
+            "APP_BASE_URL"
+          ]
+        }
+      ],
+      "allowed_paths": [
+        "app/**",
+        "src/**",
+        "lib/**",
+        "components/**",
+        "proxy.ts",
+        "proxy.js",
+        "middleware.ts",
+        "middleware.js",
+        "src/proxy.ts",
+        "src/proxy.js",
+        "src/middleware.ts",
+        "src/middleware.js",
+        ".gitignore",
+        "package.json",
+        "package-lock.json",
+        "pnpm-lock.yaml",
+        "yarn.lock"
+      ],
+      "denied_paths": [
+        "next.config.*",
+        "vite.config.*",
+        "vitest.config.*",
+        "app.config.*",
+        "tsconfig*.json",
+        "jsconfig*.json",
+        "postcss.config.*",
+        "tailwind.config.*",
+        "eslint.config.*",
+        ".eslintrc*",
+        "babel.config.*",
+        ".babelrc*",
+        "turbo.json",
+        "nx.json",
+        "Dockerfile*",
+        "docker-compose*",
+        ".github/**",
+        ".env*",
+        "**/.env*",
+        "scripts/**",
+        ".npmrc",
+        "**/.npmrc",
+        ".yarnrc",
+        ".yarnrc.yml",
+        ".yarn/**",
+        ".pnp.cjs",
+        ".pnp.loader.mjs",
+        "pnpm-workspace.yaml",
+        "npm-shrinkwrap.json",
+        "bun.lock",
+        "bun.lockb"
+      ]
+    },
+    {
+      "id": "react-vite",
+      "skill": "passflow-react-vite",
+      "detect": {
+        "all": [
+          {
+            "package": "vite"
+          },
+          {
+            "package": "react"
+          }
+        ]
+      },
+      "app_type": "spa",
+      "default_base_url": "http://localhost:5173",
+      "env_file": ".env.local",
+      "env_keys": [
+        "VITE_PASSFLOW_URL",
+        "VITE_PASSFLOW_APP_ID",
+        "VITE_API_URL",
+        "PASSFLOW_ISSUER",
+        "PASSFLOW_AUDIENCE",
+        "APP_BASE_URL"
+      ],
+      "secret_env_keys": [],
+      "not_provisioned_env_keys": [
+        "VITE_API_URL"
+      ],
+      "packages": [
+        {
+          "name": "@passflow/react",
+          "version_env": "PASSFLOW_REACT_VERSION",
+          "env_keys": [
+            "VITE_PASSFLOW_URL",
+            "VITE_PASSFLOW_APP_ID",
+            "VITE_API_URL"
+          ]
+        },
+        {
+          "name": "@passflow/node",
+          "version_env": "PASSFLOW_NODE_VERSION",
+          "env_keys": [
+            "PASSFLOW_ISSUER",
+            "PASSFLOW_AUDIENCE",
+            "APP_BASE_URL"
+          ]
+        }
+      ],
+      "allowed_paths": [
+        "src/**",
+        "server/**",
+        "api/**",
+        ".gitignore",
+        "package.json",
+        "package-lock.json",
+        "pnpm-lock.yaml",
+        "yarn.lock"
+      ],
+      "denied_paths": [
+        "next.config.*",
+        "vite.config.*",
+        "vitest.config.*",
+        "app.config.*",
+        "tsconfig*.json",
+        "jsconfig*.json",
+        "postcss.config.*",
+        "tailwind.config.*",
+        "eslint.config.*",
+        ".eslintrc*",
+        "babel.config.*",
+        ".babelrc*",
+        "turbo.json",
+        "nx.json",
+        "Dockerfile*",
+        "docker-compose*",
+        ".github/**",
+        ".env*",
+        "**/.env*",
+        "scripts/**",
+        ".npmrc",
+        "**/.npmrc",
+        ".yarnrc",
+        ".yarnrc.yml",
+        ".yarn/**",
+        ".pnp.cjs",
+        ".pnp.loader.mjs",
+        "pnpm-workspace.yaml",
+        "npm-shrinkwrap.json",
+        "bun.lock",
+        "bun.lockb",
+        "index.html"
+      ]
+    },
+    {
+      "id": "node-api",
+      "skill": "passflow-node-api",
+      "detect": {
+        "any": [
+          {
+            "package": "express"
+          },
+          {
+            "package": "fastify"
+          },
+          {
+            "package": "hono"
+          }
+        ]
+      },
+      "app_type": null,
+      "default_base_url": null,
+      "env_file": ".env",
+      "env_keys": [
+        "PASSFLOW_ISSUER",
+        "PASSFLOW_AUDIENCE"
+      ],
+      "secret_env_keys": [],
+      "not_provisioned_env_keys": [],
+      "packages": [
+        {
+          "name": "@passflow/node",
+          "version_env": "PASSFLOW_NODE_VERSION",
+          "env_keys": [
+            "PASSFLOW_ISSUER",
+            "PASSFLOW_AUDIENCE"
+          ]
+        }
+      ],
+      "allowed_paths": [
+        "src/**",
+        "server/**",
+        "lib/**",
+        "routes/**",
+        "index.ts",
+        "index.js",
+        "index.mjs",
+        "server.ts",
+        "server.js",
+        "server.mjs",
+        "app.ts",
+        "app.js",
+        "app.mjs",
+        "main.ts",
+        "main.js",
+        "main.mjs",
+        ".gitignore",
+        "package.json",
+        "package-lock.json",
+        "pnpm-lock.yaml",
+        "yarn.lock"
+      ],
+      "denied_paths": [
+        "next.config.*",
+        "vite.config.*",
+        "vitest.config.*",
+        "app.config.*",
+        "tsconfig*.json",
+        "jsconfig*.json",
+        "postcss.config.*",
+        "tailwind.config.*",
+        "eslint.config.*",
+        ".eslintrc*",
+        "babel.config.*",
+        ".babelrc*",
+        "turbo.json",
+        "nx.json",
+        "Dockerfile*",
+        "docker-compose*",
+        ".github/**",
+        ".env*",
+        "**/.env*",
+        "scripts/**",
+        ".npmrc",
+        "**/.npmrc",
+        ".yarnrc",
+        ".yarnrc.yml",
+        ".yarn/**",
+        ".pnp.cjs",
+        ".pnp.loader.mjs",
+        "pnpm-workspace.yaml",
+        "npm-shrinkwrap.json",
+        "bun.lock",
+        "bun.lockb"
+      ]
+    }
+  ]
+}
