@@ -32,9 +32,9 @@ Read this before you edit any auth code in the API. Each rule says what to do, w
 
 ## 5. Configuration comes from the environment
 
-- **Rule:** the issuer and the audience come from `PASSFLOW_ISSUER` and `PASSFLOW_AUDIENCE`. Nothing Passflow-specific is hard-coded.
-- **Why:** each environment (local, staging, production) has its own issuer and app. A hard-coded value ships the wrong one, or mixes them.
-- **Instead:** keep `src/passflow.ts` as the asset has it. Build one verifier at startup and share it.
+- **Rule:** the issuer and the audience come from `PASSFLOW_ISSUER` and `PASSFLOW_AUDIENCE`. Nothing Passflow-specific is hard-coded. `PASSFLOW_AUDIENCE` is one or more client IDs, comma-separated: each is the client ID of a Passflow app whose access tokens this API accepts, never an invented audience string such as `api` or a URL.
+- **Why:** each environment (local, staging, production) has its own issuer and apps. A hard-coded value ships the wrong one, or mixes them. An access token carries its app's client ID as `aud`, so an invented audience matches no token and every call gets 401.
+- **Instead:** keep `src/passflow.ts` as the asset has it: it splits `PASSFLOW_AUDIENCE` on commas and passes the list to the verifier. Build one verifier at startup and share it. To accept another app's tokens, add its client ID to the list; do not build a second verifier.
 - **Checked:** no.
 
 ## 6. Copy SDK calls from `assets/`, never from memory

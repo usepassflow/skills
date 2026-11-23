@@ -37,7 +37,8 @@ Check each one before you change a file. Read `package.json` and look for the fi
 
    **Yarn Berry or Bun: stop.** Tell the user that this skill supports npm, pnpm and Yarn 1 only.
 4. **Env file `.env`** at the project root, with `PASSFLOW_ISSUER` and `PASSFLOW_AUDIENCE`. You never create or edit it, and you never print its values.
-   - `npx passflow integrate` writes it. In a Passflow GitHub App run, the service writes `.env.example` with the public values filled in (`PASSFLOW_ISSUER`, `PASSFLOW_AUDIENCE`) and any secret empty; this stack has no secret. Leave that file as it is. If `.env` is missing or a value is empty, do not invent values: carry on with the code, and the last step tells the developer how to get them (the issuer URL and the client ID of the Passflow app whose tokens this API accepts).
+   - `PASSFLOW_AUDIENCE` is one or more client IDs, comma-separated (`id1` or `id1,id2`): each is the client ID of a Passflow app whose access tokens this API accepts. Never an invented audience string such as `api` or a URL: no token carries it, so every token would get 401.
+   - `npx passflow integrate` writes it. In a Passflow GitHub App run, the service writes `.env.example` with the public values filled in (`PASSFLOW_ISSUER`, `PASSFLOW_AUDIENCE`) and any secret empty; this stack has no secret. Leave that file as it is. If `.env` is missing or a value is empty, do not invent values: carry on with the code, and the last step tells the developer how to get them (the issuer URL, and the client ID of each Passflow app whose tokens this API accepts).
    - In a Passflow GitHub App run there is no `.env`: that is expected. Do not look for its values.
    - A committed `.env`: on the developer's machine, check with `git ls-files --error-unmatch .env`. If it succeeds, git tracks the file: stop. Tell the user to run `git rm --cached .env`, commit, and add `.env` to `.gitignore`. In a Passflow GitHub App run, the service refuses a repository with a committed `.env`, `.env.local` or `.env.*.local` before you start, so there is nothing to check.
 
@@ -139,7 +140,7 @@ Check each one before you change a file. Read `package.json` and look for the fi
    `passflow` is exported by `passflow-express.ts` and `passflow-hono.ts`. Read the claims in a handler with `getAuth(req)` (Express), `getAuth(request)` (Fastify) or `getAuth(c)` (Hono), each imported from the same adapter path. A missing role is a plain 403 with no `WWW-Authenticate`. In Fastify, `passflowPlugin` is registered once per instance; a scope without it uses `createFastifyHooks(verifier)` from `@passflow/node/fastify`, as `assets/examples/fastify-routes.ts` shows.
 
 5. **Tell the developer.** End with a short message that lists what they still have to do, each as a command or a line to add. Include only the items that apply:
-   - **Env values.** If `.env` is missing or a value is empty: run `npx passflow integrate`, or create `.env` with `PASSFLOW_ISSUER=` and `PASSFLOW_AUDIENCE=` from the Passflow portal (the issuer URL, and the client ID of the app whose tokens the API accepts). Names only in your message, never values.
+   - **Env values.** If `.env` is missing or a value is empty: run `npx passflow integrate`, or create `.env` with `PASSFLOW_ISSUER=` and `PASSFLOW_AUDIENCE=` from the Passflow portal (the issuer URL, and the client ID of each app whose tokens the API accepts, comma-separated when there are several). Names only in your message, never values.
    - **Loading `.env`.** If the app does not load it already (dotenv, `--env-file`, its framework): start Node with `--env-file=.env`, for example `node --env-file=.env dist/server.js` in the start script.
    - **CORS package.** If a browser on another origin calls the API and the CORS package is missing: `npm install cors` (plus `npm install -D @types/cors` in a TypeScript project) for Express, or `npm install @fastify/cors` for Fastify, written for the project's package manager. Then copy the CORS asset and add the one line from step 3, before the routes.
    - **Check.** `bash <skill>/scripts/verify.sh run --port <the API's port>`, with `--origin <a browser origin it allows>` when there is CORS, and `--api <path>` when the route is not `/api/me`.
@@ -153,7 +154,7 @@ Read `references/guardrails.md` before you edit auth code. In short:
 - Check the token on every protected route, on the server.
 - Return the library's 401 or 503 unchanged; no `next(err)`, no rewritten body.
 - When a browser calls the API, CORS goes first and exposes `WWW-Authenticate` through `exposeChallengeHeader`. Never turn on `credentials`.
-- Issuer and audience come from `PASSFLOW_ISSUER` and `PASSFLOW_AUDIENCE`, never hard-coded.
+- Issuer and audience come from `PASSFLOW_ISSUER` and `PASSFLOW_AUDIENCE`, never hard-coded. `PASSFLOW_AUDIENCE` holds one or more client IDs, comma-separated, never an invented audience string.
 - Copy Passflow calls from `assets/`, never from memory.
 - Never print or log a token, an `Authorization` header or an env value.
 - Add no dependency other than `@passflow/node`, edit no `package.json` script, and create or edit no `.env*` file.
@@ -180,7 +181,7 @@ Each check prints `PASS`, `FAIL` or `SKIP` (a check that does not apply, such as
 
 - **`TypeError: [passflow] issuer must be a non-empty string` at startup.** `.env` was not loaded, or `PASSFLOW_ISSUER` is empty. See step 5.
 - **Type error on `createVerifier`: `string | undefined` is not assignable to `string`.** The installed `@passflow/node` is older than the one the assets need. Run the install line again.
-- **Every token gets 401 `invalid_token`.** `PASSFLOW_ISSUER` differs from the token's `iss` (a trailing slash counts), or `PASSFLOW_AUDIENCE` is not the client ID of the app that issued the token. To see why, use `explainRejection` from `assets/examples/explain-rejection.ts` for a moment: it logs the error's `code` and `reason` only. Remove it afterwards.
+- **Every token gets 401 `invalid_token`.** `PASSFLOW_ISSUER` differs from the token's `iss` (a trailing slash counts), or no client ID in `PASSFLOW_AUDIENCE` is that of the app the token was issued for. To see why, use `explainRejection` from `assets/examples/explain-rejection.ts` for a moment: it logs the error's `code` and `reason` only. Remove it afterwards.
 - **Every request gets 503.** The API cannot load the issuer's key set. From the API's machine, `curl -i "$PASSFLOW_ISSUER/.well-known/jwks.json"` must answer 200.
 - **The browser sees a bare 401 and the step-up dialog never opens.** CORS does not expose `WWW-Authenticate`, or it is mounted after the routes. See step 3.
 - **Fastify throws `FST_ERR_DEC_ALREADY_PRESENT`.** `passflowPlugin` was registered twice on one instance. Register it once; use `createFastifyHooks(verifier)` elsewhere, as in `assets/examples/fastify-routes.ts`.
