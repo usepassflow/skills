@@ -50,7 +50,7 @@ Check each one before you change a file. Read the `package.json` files and look 
    | `APP_BASE_URL` | API | The SPA's origin, for example `http://localhost:5173`, with no path, query or fragment: an SPA served under a sub-path is not supported, and `npx passflow integrate` refuses a `--base-url` with a path. It is the origin the API's CORS allows. |
 
    - `PASSFLOW_AUDIENCE` is the SPA app's client ID, because the access tokens the SPA gets carry `aud = [app ID]`. Never invent an audience string such as `api` or a URL: every token would then get 401.
-   - When the API also accepts the access tokens of other Passflow apps, `PASSFLOW_AUDIENCE` is a comma-separated list of client IDs (`spa-id,other-id`) that includes the SPA's. Each entry is an app's client ID, never an invented string.
+   - When the API also accepts the access tokens of other Passflow apps, `PASSFLOW_AUDIENCE` is a comma-separated list of client IDs (`spa-id,other-id`) that includes the SPA's. Each entry is an app's client ID, never an invented string. Every app in the list gets the same access to the API.
    - `VITE_API_URL` is not provisioned. When it is absent, the CLI writes `http://localhost:8086`, or the origin given to its `--api-url` flag. The developer sets it to the real API origin in each environment.
    - Nothing secret goes in a `VITE_` variable. Vite puts every `VITE_` value into the browser bundle. The SPA needs no secret, and this stack has none.
    - If `.env.local` is missing or a value is empty, do not invent values: carry on with the code, and the last step tells the developer how to get them.
