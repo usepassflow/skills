@@ -20,7 +20,7 @@ This stack keeps the user's tokens in browser storage. That is how `@passflow/re
 
 ## 3. `PASSFLOW_AUDIENCE` is the SPA app's client ID
 
-- **Rule:** the API's `PASSFLOW_AUDIENCE` has the same value as `VITE_PASSFLOW_APP_ID`, and `PASSFLOW_ISSUER` the same as `VITE_PASSFLOW_URL`.
+- **Rule:** the API's `PASSFLOW_AUDIENCE` has the same value as `VITE_PASSFLOW_APP_ID`, and `PASSFLOW_ISSUER` the same as `VITE_PASSFLOW_URL`. When the API also accepts the access tokens of other Passflow apps, `PASSFLOW_AUDIENCE` is a comma-separated list of client IDs that includes `VITE_PASSFLOW_APP_ID`; each entry is an app's client ID.
 - **Why:** the access tokens the SPA gets carry `aud = [app ID]`. An invented audience (`api`, a URL) matches no token, so every call gets 401.
 - **Instead:** take both values from the env file the developer filled in. If one is missing, tell the developer; never make one up.
 - **Checked:** no. A wrong value shows as 401 `invalid_token` on every signed-in call.

@@ -46,10 +46,11 @@ Check each one before you change a file. Read the `package.json` files and look 
    | `VITE_PASSFLOW_APP_ID` | SPA | The SPA app's client ID. Public. |
    | `VITE_API_URL` | SPA | The API's origin as the browser calls it. |
    | `PASSFLOW_ISSUER` | API | The same issuer URL as `VITE_PASSFLOW_URL`. |
-   | `PASSFLOW_AUDIENCE` | API | The SPA app's client ID: the same value as `VITE_PASSFLOW_APP_ID`. |
+   | `PASSFLOW_AUDIENCE` | API | The SPA app's client ID: the same value as `VITE_PASSFLOW_APP_ID`. A comma-separated list when the API also accepts other apps' tokens. |
    | `APP_BASE_URL` | API | The SPA's origin, for example `http://localhost:5173`, with no path, query or fragment: an SPA served under a sub-path is not supported, and `npx passflow integrate` refuses a `--base-url` with a path. It is the origin the API's CORS allows. |
 
    - `PASSFLOW_AUDIENCE` is the SPA app's client ID, because the access tokens the SPA gets carry `aud = [app ID]`. Never invent an audience string such as `api` or a URL: every token would then get 401.
+   - When the API also accepts the access tokens of other Passflow apps, `PASSFLOW_AUDIENCE` is a comma-separated list of client IDs (`spa-id,other-id`) that includes the SPA's. Each entry is an app's client ID, never an invented string. Every app in the list gets the same access to the API.
    - `VITE_API_URL` is not provisioned. When it is absent, the CLI writes `http://localhost:8086`, or the origin given to its `--api-url` flag. The developer sets it to the real API origin in each environment.
    - Nothing secret goes in a `VITE_` variable. Vite puts every `VITE_` value into the browser bundle. The SPA needs no secret, and this stack has none.
    - If `.env.local` is missing or a value is empty, do not invent values: carry on with the code, and the last step tells the developer how to get them.
@@ -185,7 +186,7 @@ Read `references/guardrails.md` before you edit auth code. In short:
 
 - Nothing secret in a `VITE_` variable: Vite ships every one to the browser.
 - The API checks the token on every protected route. Hiding a page in the SPA protects nothing.
-- `PASSFLOW_AUDIENCE` is the SPA app's client ID, the same value as `VITE_PASSFLOW_APP_ID`. Never invent one.
+- `PASSFLOW_AUDIENCE` is the SPA app's client ID, the same value as `VITE_PASSFLOW_APP_ID`, or a comma-separated list of client IDs that includes it. Never invent one.
 - Tokens go to the API's origin only, through `useApi()`. Never build an `Authorization` header by hand, and never send the token to another origin.
 - Verify tokens on the API with `createVerifier`; never decode one by hand, in the SPA or the API.
 - CORS goes first on the API, allows the SPA's origin only, and exposes `WWW-Authenticate` through `exposeChallengeHeader`. Never turn on `credentials`.
@@ -216,7 +217,7 @@ Each check prints `PASS`, `FAIL` or `SKIP` (a check that does not apply, such as
 
 - **The page is blank and the console says `VITE_PASSFLOW_URL and VITE_PASSFLOW_APP_ID must be set in .env.local`** (or `VITE_API_URL`). The value was missing when Vite started or built. Fill in `.env.local`, then restart `npm run dev` or build again.
 - **Passflow shows "redirect_uri not registered for this client".** The app's redirect URLs lack the SPA's root URL, or the SPA runs on another origin or port than `APP_BASE_URL`. Add `<origin>/` to the app's redirect URLs, or open the SPA on the registered origin.
-- **Every API call gets 401 `invalid_token`.** `PASSFLOW_AUDIENCE` is not the SPA app's client ID, or `PASSFLOW_ISSUER` differs from the token's `iss` (a trailing slash counts). Both must equal `VITE_PASSFLOW_APP_ID` and `VITE_PASSFLOW_URL`.
+- **Every API call gets 401 `invalid_token`.** `PASSFLOW_AUDIENCE` is not, or does not include, the SPA app's client ID, or `PASSFLOW_ISSUER` differs from the token's `iss` (a trailing slash counts). `PASSFLOW_ISSUER` must equal `VITE_PASSFLOW_URL`, and `PASSFLOW_AUDIENCE` must be or include `VITE_PASSFLOW_APP_ID`.
 - **The API call has no `Authorization` header.** The request did not go through `useApi()`, its URL is not on `VITE_API_URL`'s origin, or no user is signed in.
 - **The browser reports a CORS error.** `APP_BASE_URL` does not match the origin the SPA runs on, CORS is mounted after the routes, or the API has no CORS at all. See step 6.
 - **`TypeError: [passflow] issuer must be a non-empty string` when the API starts.** The API did not load `.env.local`. See step 8.
