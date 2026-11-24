@@ -690,35 +690,36 @@ pf_git_tracked() {
 
 # ---------------------------------------------------------------- scans
 
-# _pf_scan_value DIR NAME SOURCE VALUE [GREP_ARGS...]: prints "<file>: value of NAME (SOURCE)" for each file
-# under DIR that holds VALUE; returns 1 when one does. The value reaches grep through a pipe, never a
-# command line that `ps` could show nor a file left behind on a signal. Values shorter than 8 characters
-# are not searched (they would match by chance).
+# _pf_scan_value DIR NAME SOURCE VALUE: prints "<file>: value of NAME (SOURCE)" for each file under DIR
+# that holds VALUE; returns 1 when one does or the search could not run. The value reaches grep through a pipe,
+# never a command line that `ps` could show nor a file left behind on a signal. Values shorter than 8
+# characters are not searched (they would match by chance).
 _pf_scan_value() {
   local dir="$1" name="$2" source="$3" value="$4" hits
-  shift 4
   [ "${#value}" -ge 8 ] || return 0
-  hits="$(grep -rlF "$@" -f <(printf '%s\n' "$value") -- "$dir" 2>/dev/null || true)"
+  hits="$(printf '%s\n' "$value" | grep -rlF -f - -- "$dir" 2>/dev/null)" || [ "$?" -eq 1 ] || {
+    printf '  could not search for the value of %s (%s)\n' "$name" "$source"
+    return 1
+  }
   [ -n "$hits" ] || return 0
   printf '%s\n' "$hits" | while IFS= read -r f; do printf '  %s: value of %s (%s)\n' "$f" "$name" "$source"; done
   return 1
 }
 
-# _pf_scan_values DIR ENV_FILE NAME [GREP_ARGS...]: searches DIR for NAME's value from ENV_FILE and, when it
+# _pf_scan_values DIR ENV_FILE NAME: searches DIR for NAME's value from ENV_FILE and, when it
 # differs, for the value NAME has in this process's environment (a CI secret store, for example).
 _pf_scan_values() {
   local dir="$1" env_file="$2" name="$3" file_value='' env_value='' found=0
-  shift 3
   case "$name" in
     '' | *[!A-Za-z0-9_]* | [0-9]*) return 0 ;;
   esac
   if [ -n "$env_file" ] && [ -f "$env_file" ]; then
     file_value="$(_pf_env_value "$env_file" "$name")"
-    _pf_scan_value "$dir" "$name" "$(basename "$env_file")" "$file_value" "$@" || found=1
+    _pf_scan_value "$dir" "$name" "$(basename "$env_file")" "$file_value" || found=1
   fi
   env_value="${!name:-}"
   if [ -n "$env_value" ] && [ "$env_value" != "$file_value" ]; then
-    _pf_scan_value "$dir" "$name" environment "$env_value" "$@" || found=1
+    _pf_scan_value "$dir" "$name" environment "$env_value" || found=1
   fi
   file_value=''
   env_value=''
@@ -747,17 +748,18 @@ pf_scan_bundle() {
 }
 
 # pf_scan_values DIR ENV_FILE 'GLOB...' NAME...: like pf_scan_bundle, but values only and only in files whose
-# name matches one of the space-separated GLOBs (server output that is sent to browsers, for example).
+# name matches one of the space-separated *.ext GLOBs (server output that is sent to browsers, for example).
 # Returns 0 clean, 1 found, 3 when DIR does not exist.
 pf_scan_values() {
-  local dir="$1" env_file="$2" globs="$3" name glob includes='' found=0
+  local dir="$1" env_file="$2" globs="$3" name glob ends='' out found=0
   shift 3
   [ -d "$dir" ] || return 3
   set -f
-  for glob in $globs; do includes="$includes --include=$glob"; done
+  for glob in $globs; do ends="$ends|\\${glob#\*}"; done
   for name in "$@"; do
-    # shellcheck disable=SC2086
-    _pf_scan_values "$dir" "$env_file" "$name" $includes || found=1
+    out="$(_pf_scan_values "$dir" "$env_file" "$name")" && continue
+    printf '%s\n' "$out" | grep -E "(${ends#|}): value of|^  could not"
+    [ "${PIPESTATUS[1]}" -eq 1 ] || found=1
   done
   set +f
   return "$found"

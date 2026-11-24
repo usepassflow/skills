@@ -158,7 +158,7 @@ server_only_scan() {
       hits="$hits$found
 "
     fi
-  done < <(printf '%s\n' "$files")
+  done < <(printf '%s\n' "$files") || { printf '  could not read the list of source files\n'; return 1; }
   if [ -n "$hits" ]; then
     printf '%s' "$hits"
     return 1
@@ -231,7 +231,7 @@ run_static() {
     if [ "$scanned" -eq 0 ]; then
       pf_fail "client bundle" "no client bundle in: $(printf '%s' "$bundle_dirs" | tr '\n' ' ')"
     elif [ "$found" -eq 1 ]; then
-      pf_fail "client bundle" "a secret's name or value is in the browser's files"
+      pf_fail "client bundle" "a secret's name or value is in the browser's files, or the search could not run"
       cat "$WORK/bundle.log"
     else
       pf_pass "client bundle has no secret names or values"
