@@ -178,7 +178,10 @@ SERVER_MODULE_IMPORT="from[[:space:]]*['\"]([^'\"]*/)?(lib/passflow|@passflow/ne
 imports_server_module() {
   local rel
   case "$1" in
-    "$ROOT"/lib/*/*) rel='(\.\./)+' ;;
+    "$ROOT"/lib/*/*)
+      rel="${1#"$ROOT"/lib/}"
+      rel="$(printf '%s\n' "${rel%/*}/" | sed 's|[^/]*/|\\.\\./|g')"
+      ;;
     "$ROOT"/lib/*) rel='\./' ;;
     *) rel='lib/' ;;
   esac

@@ -225,7 +225,7 @@ run_static() {
         1) scanned=1; found=1 ;;
       esac
       if [ -d "$DIR/$d" ]; then
-        server_code="$server_code$(grep -rlF 'node:async_hooks' "$DIR/$d" 2>/dev/null || true)"
+        server_code="$server_code$(grep -rlF 'node:async_hooks' "$DIR/$d/." 2>/dev/null || true)"
       fi
     done
     if [ "$scanned" -eq 0 ]; then
