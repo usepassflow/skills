@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Black-box tests for the detection stage of skills/<name>/scripts/verify.sh
+# Black-box tests for the detection stage and the scans of skills/<name>/scripts/verify.sh
 # and for the index.json copies.
 #
-# Each case copies a fixture from tools/fixtures/ into a temp dir and runs
+# Each detection case copies a fixture from tools/fixtures/ into a temp dir and runs
 # `verify.sh static --dir <copy>`. Refused cases expect exit 2 and a REFUSED line
 # naming the reason. Accepted cases run with stub npm, pnpm, yarn and bun on PATH:
 # the stubs log their arguments and fail without touching the network, so an
@@ -196,6 +196,127 @@ expect_refused "REQ-21 @tanstack/react-start without the router is not tanstack-
 expect_refused "REQ-21 @tanstack/react-start without the router is refused via passflow-react-vite" passflow-react-vite stack-start-no-router 'not @tanstack/react-router'
 # REQ-22: Start ^1.169.5 with Router ^1.170.46 is accepted.
 expect_accepted "REQ-22 @tanstack/react-start ^1.169.5 + @tanstack/react-router ^1.170.46 is accepted (npm install)" passflow-tanstack-start stack-start-ok npm
+
+echo "# Source and bundle scans"
+# These cases run every check of `static`: the npm stub's build step writes the browser files.
+# With PF_TEST_BREAK, grep exits 2 from the build step on.
+SCAN="$WORK/scan"
+mkdir -p "$SCAN/stubs"
+cat >"$SCAN/stubs/npm" <<'EOF'
+#!/bin/sh
+case "$*" in
+  *run*build*)
+    mkdir -p .next/static .next/server/app dist/client
+    echo "${PF_TEST_PAGE:-ok}" >.next/server/app/x.html
+    echo "${PF_TEST_JS:-ok}" | tee .next/server/app/x.js >/dev/null
+    echo "${PF_TEST_BUNDLE:-ok}" | tee .next/static/a.js >dist/client/a.js
+    : >"$PF_TEST_BUILT"
+    ;;
+esac
+EOF
+cat >"$SCAN/stubs/grep" <<EOF
+#!/bin/sh
+if [ -n "\${PF_TEST_BREAK:-}" ] && [ -e "\$PF_TEST_BUILT" ]; then exit 2; fi
+exec "$(command -v grep)" "\$@"
+EOF
+chmod +x "$SCAN"/stubs/*
+SECRET_VALUE='fixture-value-1'
+
+# put FILE LINE...: writes a file of $APP.
+put() {
+  mkdir -p "$(dirname "$APP/$1")"
+  file="$APP/$1"
+  shift
+  printf '%s\n' "$@" >"$file"
+}
+
+# new_app NAME SKILL: a clean app for SKILL in $APP.
+new_app() {
+  APP="$SCAN/$1"
+  SKILL=$2
+  SCRIPT="$ROOT/skills/$2/scripts/verify.sh"
+  case "$SKILL" in
+    passflow-nextjs)
+      deps='"next": "^16.0.0", "@passflow/nextjs": "^0.1.0"'
+      put proxy.ts 'export const proxy = (r) => passflow.proxy(r);'
+      put lib/passflow.ts "import { createPassflow } from '@passflow/nextjs';"
+      put app/page.tsx 'export default 1;'
+      ;;
+    passflow-tanstack-start)
+      deps='"@tanstack/react-start": "^1.169.5", "@tanstack/react-router": "^1.170.46", "@passflow/tanstack-react-start": "^0.1.0"'
+      put src/start.ts "requestMiddleware: [createCsrfMiddleware({ filter: (ctx) => ctx.handlerType === 'serverFn' }), passflow.middleware()]"
+      put src/routes/index.tsx 'export default 1;'
+      ;;
+    passflow-react-vite)
+      deps='"react": "19", "vite": "^7.0.0", "express": "^5.0.0", "@passflow/react": "^0.1.0", "@passflow/node": "^0.1.0"'
+      put src/main.tsx "import './style.css';"
+      put server/index.ts "import express from 'express';"
+      ;;
+    passflow-node-api)
+      deps='"express": "^5.0.0", "@passflow/node": "^0.1.0"'
+      put src/index.ts "import express from 'express';"
+      ;;
+  esac
+  put package.json "{ \"scripts\": { \"build\": \"build\" }, \"dependencies\": { $deps } }"
+  put package-lock.json '{ "lockfileVersion": 3 }'
+  put .env.local "PASSFLOW_SECRET=$SECRET_VALUE"
+}
+
+# expect_scan NAME LINE_REGEX [VAR=VALUE...]: $SCRIPT prints the line for $APP, and no secret value.
+expect_scan() {
+  name=$1
+  pattern=$2
+  shift 2
+  rm -f "$SCAN/built"
+  OUT=$(env PATH="$SCAN/stubs:$PATH" PF_TEST_BUILT="$SCAN/built" "$@" \
+    "$BASH" "$SCRIPT" static --dir "$APP" 2>&1 </dev/null)
+  if ! printf '%s\n' "$OUT" | grep -Eq -- "$pattern"; then
+    fail "$name" "no line matches /$pattern/: $(printf '%s' "$OUT" | tr '\n' '|')"
+  elif printf '%s\n' "$OUT" | grep -Fq "$SECRET_VALUE"; then
+    fail "$name" "the output holds a secret's value"
+  else
+    pass "$name"
+  fi
+}
+
+# REQ-23: a clean app passes. REQ-24: a scan that cannot run fails its check. REQ-25: a secret's value is found.
+for s in nextjs tanstack-start react-vite node-api; do
+  new_app "$s" "passflow-$s"
+  expect_scan "REQ-23 $s: a clean app passes" '^RESULT pass'
+  case "$s" in node-api) continue ;; esac
+  expect_scan "REQ-24 $s: secret search cannot run" '^  could not search for the value of PASSFLOW_SECRET' PF_TEST_BREAK=1
+  expect_scan "REQ-25 $s: secret's value in the bundle" 'a\.js: value of PASSFLOW_SECRET' PF_TEST_BUNDLE="$SECRET_VALUE"
+done
+new_app nextjs passflow-nextjs
+expect_scan "REQ-25 nextjs: secret's value in a prerendered page" 'x\.html: value of PASSFLOW_SECRET' PF_TEST_PAGE="$SECRET_VALUE"
+expect_scan "REQ-25 nextjs: server files are not prerendered pages" '^PASS client bundle' PF_TEST_JS="$SECRET_VALUE"
+# The loops of a copied verify.sh read a path that does not exist.
+for s in nextjs tanstack-start; do
+  new_app "$s" "passflow-$s"
+  mkdir "$SCAN/scripts-$s"
+  cp "$ROOT/skills/$SKILL/scripts/"* "$SCAN/scripts-$s"
+  SCRIPT="$SCAN/scripts-$s/verify.sh"
+  # shellcheck disable=SC2016
+  sed 's|< <(printf .*"$files")|</nonexistent/input|' "$ROOT/skills/$SKILL/scripts/verify.sh" >"$SCRIPT"
+  expect_scan "REQ-24 $s: source list cannot be read" '^FAIL guardrails'
+done
+
+# REQ-26: a client component must not import the server module, by any path.
+client="'use client';"
+for spec in components/w.tsx:@/lib/passflow lib/w.tsx:./passflow lib/w.tsx:./passflow.js lib/ui/w.tsx:../passflow; do
+  new_app "next-$(printf '%s' "$spec" | tr -c 'a-z\n' -)" passflow-nextjs
+  put "${spec%%:*}" "$client" "import { passflow } from '${spec#*:}';"
+  expect_scan "REQ-26 nextjs: $spec" 'server-only Passflow module: .*w\.tsx'
+done
+new_app next-helper passflow-nextjs
+put lib/help.ts "import { passflow } from './passflow';"
+put components/w.tsx "$client" "import { x } from '@/lib/help';"
+expect_scan "REQ-26 nextjs: import through a helper in lib/" 'uses the server-only Passflow module: .*w\.tsx'
+new_app next-unrelated passflow-nextjs
+put components/w.tsx "$client" "import x from './passflow';"
+put components/passflow.tsx "$client" 'export default 1;'
+put lib/ui/w.tsx "$client" "import x from './passflow';"
+expect_scan "REQ-26 nextjs: unrelated passflow components pass" '^PASS guardrails'
 
 echo "# Repo structure"
 # REQ-13: every skills/<name>/scripts/index.json is byte-identical to skills/index.json.

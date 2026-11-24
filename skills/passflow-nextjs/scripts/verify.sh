@@ -174,6 +174,17 @@ is_client_file() { has_directive "$1" 'use client'; }
 
 SERVER_MODULE_IMPORT="from[[:space:]]*['\"]([^'\"]*/)?(lib/passflow|@passflow/nextjs)(\\.[jt]sx?)?['\"]"
 
+# 0 when FILE imports the server module: by its lib/ path, or by a relative path from inside lib/.
+imports_server_module() {
+  local rel
+  case "$1" in
+    "$ROOT"/lib/*/*) rel='(\.\./)+' ;;
+    "$ROOT"/lib/*) rel='\./' ;;
+    *) rel='lib/' ;;
+  esac
+  grep -qE "$SERVER_MODULE_IMPORT|from[[:space:]]*['\"]${rel}passflow(\\.[jt]sx?)?['\"]" "$1"
+}
+
 # A client component must not import the server module, directly or through a module of the app that imports
 # it: it would ship to the browser and fail there.
 client_import_scan() {
@@ -183,7 +194,7 @@ client_import_scan() {
   # A 'use server' file is left out: a client component may import server actions.
   while IFS= read -r f; do
     [ -n "$f" ] || continue
-    if ! is_client_file "$f" && ! has_directive "$f" 'use server' && grep -qE "$SERVER_MODULE_IMPORT" "$f"; then
+    if ! is_client_file "$f" && ! has_directive "$f" 'use server' && imports_server_module "$f"; then
       stem="$(basename "$f")"
       stem="${stem%.*}"
       case "$stem" in
@@ -191,19 +202,19 @@ client_import_scan() {
         *) stems="$stems|$stem" ;;
       esac
     fi
-  done < <(printf '%s\n' "$files")
+  done < <(printf '%s\n' "$files") || { printf '  could not read the list of source files\n'; return 1; }
   stems="${stems#|}"
   while IFS= read -r f; do
     [ -n "$f" ] || continue
     is_client_file "$f" || continue
-    if grep -qE "$SERVER_MODULE_IMPORT" "$f"; then
+    if imports_server_module "$f"; then
       hits="$hits  client component imports the server-only Passflow module: $f
 "
     elif [ -n "$stems" ] && grep -qE "from[[:space:]]*['\"]([^'\"]*/)?($stems)(\\.[jt]sx?)?['\"]" "$f"; then
       hits="$hits  client component imports a module that uses the server-only Passflow module: $f
 "
     fi
-  done < <(printf '%s\n' "$files")
+  done < <(printf '%s\n' "$files") || { printf '  could not read the list of source files\n'; return 1; }
   if [ -n "$hits" ]; then
     printf '%s' "$hits"
     return 1
@@ -268,7 +279,7 @@ run_static() {
       if [ "$scanned" -eq 0 ]; then
         pf_fail "client bundle" "no client bundle in: $(printf '%s' "$bundle_dirs" | tr '\n' ' ')"
       elif [ "$found" -eq 1 ]; then
-        pf_fail "client bundle" "a secret's name or value is in the files sent to the browser"
+        pf_fail "client bundle" "a secret's name or value is in the files sent to the browser, or the search could not run"
         cat "$WORK/bundle.log"
       else
         pf_pass "client bundle has no secret names or values; prerendered pages have no secret values"
