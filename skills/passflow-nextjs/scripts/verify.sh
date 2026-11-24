@@ -191,9 +191,7 @@ client_import_scan() {
         *) stems="$stems|$stem" ;;
       esac
     fi
-  done <<EOF
-$files
-EOF
+  done < <(printf '%s\n' "$files")
   stems="${stems#|}"
   while IFS= read -r f; do
     [ -n "$f" ] || continue
@@ -205,9 +203,7 @@ EOF
       hits="$hits  client component imports a module that uses the server-only Passflow module: $f
 "
     fi
-  done <<EOF
-$files
-EOF
+  done < <(printf '%s\n' "$files")
   if [ -n "$hits" ]; then
     printf '%s' "$hits"
     return 1
