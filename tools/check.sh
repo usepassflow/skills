@@ -10,7 +10,8 @@
 #    1024 characters, and no keys other than name, description, compatibility and license (which must be MIT).
 # 3. Every skill in skills/index.json exists, and every skill directory is in skills/index.json.
 # 4. shellcheck passes on every *.sh.
-# 5. scripts/lib.sh is byte-identical in every skill.
+# 5. scripts/lib.sh is byte-identical in every skill and has no here-documents or here-strings: bash may
+#    need a temp file for one, and where it cannot create one the input is silently empty.
 # 6. No image files, a LICENSE file with the MIT licence, and no banned words.
 # 7. tools/test.sh passes, when it exists.
 #
@@ -362,6 +363,11 @@ for lib in skills/*/scripts/lib.sh; do
     master="$lib"
   elif ! cmp -s "$master" "$lib"; then
     fail lib "$lib differs from $master"
+    lib_ok=0
+  fi
+  line="$(grep -n '<<' "$lib" | head -1 | cut -d: -f1 || true)"
+  if [ -n "$line" ]; then
+    fail lib "$lib has a here-document or here-string (line $line)"
     lib_ok=0
   fi
 done

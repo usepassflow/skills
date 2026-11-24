@@ -327,24 +327,18 @@ _pf_detect_entries() {
 # dependency and, when the stack has an "any" list, at least one "any" package is. A stack with no entries
 # is never selected.
 _pf_stack_selected() {
-  local dir="$1" index="$2" id="$3" entries pkg range tab seen=0 any_seen=0 any_hit=0
+  local dir="$1" index="$2" id="$3" pkg range tab seen=0 any_seen=0 any_hit=0
   tab="$(printf '\t')"
-  entries="$(_pf_detect_entries "$index" "$id" all)"
   while IFS="$tab" read -r pkg range; do
     [ -n "$pkg" ] || continue
     seen=1
     pf_has_dep "$dir" "$pkg" || return 1
-  done <<EOF
-$entries
-EOF
-  entries="$(_pf_detect_entries "$index" "$id" any)"
+  done < <(_pf_detect_entries "$index" "$id" all)
   while IFS="$tab" read -r pkg range; do
     [ -n "$pkg" ] || continue
     any_seen=1
     if pf_has_dep "$dir" "$pkg"; then any_hit=1; fi
-  done <<EOF
-$entries
-EOF
+  done < <(_pf_detect_entries "$index" "$id" any)
   [ "$seen" -eq 1 ] || [ "$any_seen" -eq 1 ] || return 1
   [ "$any_seen" -eq 0 ] || [ "$any_hit" -eq 1 ]
 }
@@ -353,10 +347,9 @@ EOF
 # the stack that the project's dependencies do not meet; prints nothing when all hold. An "any" entry's rule
 # applies only when that package is a dependency. A spec that cannot be compared fails.
 _pf_stack_range_failure() {
-  local dir="$1" index="$2" id="$3" kind entries pkg range spec tab
+  local dir="$1" index="$2" id="$3" kind pkg range spec tab
   tab="$(printf '\t')"
   for kind in all any; do
-    entries="$(_pf_detect_entries "$index" "$id" "$kind")"
     while IFS="$tab" read -r pkg range; do
       [ -n "$pkg" ] && [ -n "$range" ] || continue
       pf_has_dep "$dir" "$pkg" || continue
@@ -366,9 +359,7 @@ _pf_stack_range_failure() {
         printf '%s\t%s\t%s\n' "$pkg" "$range" "$spec"
         return 0
       fi
-    done <<EOF
-$entries
-EOF
+    done < <(_pf_detect_entries "$index" "$id" "$kind")
   done
 }
 
@@ -408,9 +399,7 @@ pf_stack_refusal() {
   local dir="$1" index="$2" id="$3" failure pkg rule spec tab
   tab="$(printf '\t')"
   failure="$(_pf_stack_range_failure "$dir" "$index" "$id")"
-  IFS="$tab" read -r pkg rule spec <<EOF
-$failure
-EOF
+  IFS="$tab" read -r pkg rule spec < <(printf '%s\n' "$failure")
   printf 'this project needs %s: package.json gives %s "%s", which does not meet %s. A tag, workspace:, a URL or a compound range cannot be checked; write a version range such as "^%s".\n' \
     "$(pf_stack_version_message "$id")" "$pkg" "$spec" "$rule" "${rule#>=}"
 }
@@ -448,9 +437,7 @@ pf_detect_pm() {
     [ -e "$dir/$file" ] || continue
     [ -n "$first" ] || first="$manager"
     if [ -z "$refused" ] && pf_pm_refused "$manager" "$index"; then refused="$manager"; fi
-  done <<EOF
-$(_pf_pm_detect_entries "$index")
-EOF
+  done < <(_pf_pm_detect_entries "$index")
   if [ -n "$refused" ]; then
     printf '%s\n' "$refused"
   elif [ -f "$dir/yarn.lock" ] && grep -q '^__metadata:' "$dir/yarn.lock" 2>/dev/null; then
@@ -690,9 +677,7 @@ pf_load_env() {
     case " $* " in
       *" $name "*) export "$name=$value" ;;
     esac
-  done <<EOF
-$(_pf_env_pairs "$file")
-EOF
+  done < <(_pf_env_pairs "$file")
 }
 
 # pf_git_tracked DIR FILE: 0 when git tracks FILE. Outside a git repo: 1.
