@@ -11,9 +11,10 @@ if (!passflowUrl || !passflowAppId) {
 
 // One Passflow client for the whole app. Wrap the root component in it, in src/main.tsx.
 // `offline` is the scope that gets a refresh token, so a reload keeps the user signed in.
+// `email` puts the user's email in the tokens, which is what the signed-in button shows.
 export function PassflowRoot({ children }: { children: ReactNode }) {
   return (
-    <PassflowProvider url={passflowUrl} appId={passflowAppId} scopes={['id', 'offline', 'openid']}>
+    <PassflowProvider url={passflowUrl} appId={passflowAppId} scopes={['id', 'offline', 'openid', 'email']}>
       {children}
     </PassflowProvider>
   );
