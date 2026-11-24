@@ -697,7 +697,7 @@ pf_git_tracked() {
 _pf_scan_value() {
   local dir="$1" name="$2" source="$3" value="$4" hits
   [ "${#value}" -ge 8 ] || return 0
-  hits="$(printf '%s\n' "$value" | grep -rlF -f - -- "$dir" 2>/dev/null)" || [ "$?" -eq 1 ] || {
+  hits="$(printf '%s\n' "$value" | grep -rlF -f - -- "$dir/." 2>/dev/null)" || [ "$?" -eq 1 ] || {
     printf '  could not search for the value of %s (%s)\n' "$name" "$source"
     return 1
   }
@@ -735,7 +735,7 @@ pf_scan_bundle() {
   shift 2
   [ -d "$bundle" ] || return 3
   for name in "$@"; do
-    hits="$(grep -rlF -- "$name" "$bundle" 2>/dev/null || true)"
+    hits="$(grep -rlF -- "$name" "$bundle/." 2>/dev/null || true)"
     if [ -n "$hits" ]; then
       found=1
       printf '%s\n' "$hits" | while IFS= read -r f; do printf '  %s: %s\n' "$f" "$name"; done
@@ -765,13 +765,14 @@ pf_scan_values() {
   return "$found"
 }
 
-# Source files of the app: TypeScript and JavaScript outside dependencies and build output.
+# Source files of the app: TypeScript and JavaScript outside dependencies and build output. The search starts
+# at "/.", so the folder itself may be a symlink or have a build folder's name.
 _pf_source_files() {
-  find "$1" \
+  find "$1/." \
     \( -name node_modules -o -name .git -o -name .next -o -name .output -o -name .vinxi -o -name .nitro \
        -o -name .tanstack -o -name dist -o -name build -o -name coverage -o -name .turbo -o -name .vercel \) -prune \
     -o -type f \( -name '*.ts' -o -name '*.tsx' -o -name '*.js' -o -name '*.jsx' -o -name '*.mjs' -o -name '*.cjs' \) \
-    -print 2>/dev/null
+    -print 2>/dev/null | sed 's|/\./|/|'
 }
 
 # Prints "<file>:<line>" for each line of FILES that matches the extended regex. Never the line itself,
