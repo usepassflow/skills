@@ -158,9 +158,7 @@ server_only_scan() {
       hits="$hits$found
 "
     fi
-  done <<EOF
-$files
-EOF
+  done < <(printf '%s\n' "$files")
   if [ -n "$hits" ]; then
     printf '%s' "$hits"
     return 1
