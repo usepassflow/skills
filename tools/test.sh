@@ -221,6 +221,8 @@ expect_line() {
 }
 
 client="'use client';"
+new_app page-nextjs passflow-nextjs
+start_scan page-nextjs PF_TEST_PAGE="$SECRET_VALUE"
 for s in nextjs tanstack-start react-vite node-api; do
   new_app "clean-$s" "passflow-$s"
   case "$s" in
@@ -254,7 +256,7 @@ for s in nextjs tanstack-start react-vite node-api; do
     put lib/help.ts "import { passflow } from './passflow';"
     put components/hop.tsx "$client" "import { x } from '@/lib/help';"
   fi
-  start_scan "leak-$s" PF_TEST_BUNDLE="$SECRET_VALUE" PF_TEST_PAGE="$SECRET_VALUE"
+  start_scan "leak-$s" PF_TEST_BUNDLE="$SECRET_VALUE"
 
   # An app folder with a build folder's name or behind a symlink, and a symlinked bundle folder.
   case "$s" in
@@ -347,7 +349,8 @@ for s in nextjs tanstack-start; do
   expect_line "break-$s" "REQ-24 $s: source list cannot be read" '^  could not read the list of source files'
 done
 expect_line clean-nextjs "REQ-25 nextjs: server files are not prerendered pages" '^PASS client bundle'
-expect_line leak-nextjs "REQ-25 nextjs: secret's value in a prerendered page" 'x\.html: value of PASSFLOW_SECRET'
+expect_line page-nextjs "REQ-25 nextjs: secret's value in a prerendered page" 'x\.html: value of PASSFLOW_SECRET'
+expect_line page-nextjs "REQ-25 nextjs: a prerendered page fails the check" '^FAIL client bundle'
 expect_line root-nextjs "REQ-27 nextjs: import scan" 'server-only Passflow module: .*/lib/w\.tsx'
 expect_line root-tanstack-start "REQ-27 tanstack-start: server code in a symlinked bundle" '^FAIL client bundle: server-only code'
 # REQ-26: a client component must not import the server module, by any path.
