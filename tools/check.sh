@@ -10,8 +10,8 @@
 #    1024 characters, and no keys other than name, description, compatibility and license (which must be MIT).
 # 3. Every skill in skills/index.json exists, and every skill directory is in skills/index.json.
 # 4. shellcheck passes on every *.sh.
-# 5. scripts/lib.sh is byte-identical in every skill. It has no here-documents or here-strings, and no loop in
-#    verify.sh reads one: bash may need a temp file for it, and where it cannot create one the loop is skipped.
+# 5. scripts/lib.sh is byte-identical in every skill. It has no here-documents or here-strings, and verify.sh
+#    has only its usage text: bash may need a temp file for one, and where it cannot create it there is no input.
 # 6. No image files, a LICENSE file with the MIT licence, and no banned words.
 # 7. tools/test.sh passes, when it exists.
 #
@@ -377,8 +377,8 @@ for d in skills/*/; do
     fail lib "${d}scripts/lib.sh is missing"
     lib_ok=0
   fi
-  if [ -f "${d}scripts/verify.sh" ] && grep -qE '^[[:space:]]*done.*<<' "${d}scripts/verify.sh"; then
-    fail lib "${d}scripts/verify.sh has a loop that reads a here-document or here-string"
+  if [ -f "${d}scripts/verify.sh" ] && grep '<<' "${d}scripts/verify.sh" | grep -qvxF "  cat >&2 <<'EOF'"; then
+    fail lib "${d}scripts/verify.sh has a here-document or here-string other than the usage text"
     lib_ok=0
   fi
 done
